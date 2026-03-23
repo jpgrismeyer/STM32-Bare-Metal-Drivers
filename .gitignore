@@ -1,0 +1,9 @@
+# Carpetas de compilación
+Debug/
+Release/
+bin/
+obj/
+
+# Archivos temporales del IDE
+.settings/
+*.launch

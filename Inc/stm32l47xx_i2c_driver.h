@@ -25,20 +25,26 @@ typedef struct
     I2C_Config_t I2CConfig;
 } I2C_Handle_t;
 
-#define I2C_ACK_ENABLE    1
-#define I2C_ACK_DISABLE   0
 
 /*
- * @I2C_SCL_SPEED
+ * I2C Timing values para I2CCLK = 16MHz
+ * Estos valores están calculados para cumplir con los tiempos de subida/bajada de la norma I2C
  */
+#define I2C_TIMING_100KHZ_16MHZ    0x00303D5B
+#define I2C_TIMING_400KHZ_16MHZ    0x0010061A
 
-#define I2C_SCL_SPEED_SM  100000
-#define I2C_SCL_SPEED_FM4k  400000
+/* Macros para que el usuario elija en el main */
+#define I2C_SCL_SPEED_SM           100000  /* Standard Mode */
+#define I2C_SCL_SPEED_FM           400000  /* Fast Mode */
 
 
 
 #define I2C_NOSTRETCH_ENABLE   1
 #define I2C_NOSTRETCH_DISABLE  0
+
+#define I2C_ERROR_NONE      0
+#define I2C_ERROR_NACK      1
+#define I2C_ERROR_TIMEOUT   2
 
 void I2C_PeriClockControl(I2C_RegDef_t *pI2Cx, uint8_t EnorDi);
 
@@ -50,9 +56,9 @@ int I2C_MemRead(I2C_RegDef_t *pI2Cx, uint8_t SlaveAddr, uint8_t Reg, uint8_t *pB
 
 
 
-int I2C_Write(uint8_t devAddr7, const uint8_t *data, uint32_t len);
+uint8_t I2C_MasterSendData(I2C_Handle_t *pI2CHandle, uint8_t *pBuffer, uint32_t Len, uint8_t SlaveAddr);
 
-int I2C_Read(uint8_t devAddr7, uint8_t *data, uint32_t len);
+uint8_t I2C_MasterReceiveData(I2C_Handle_t *pI2CHandle, uint8_t *pBuffer, uint32_t Len, uint8_t SlaveAddr);
 
 /*
  *IRQ Configuration and ISR handling

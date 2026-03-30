@@ -475,6 +475,23 @@ typedef struct
 #define UART4_REG_RESET()		do{(RCC->APB2RSTR|=(1<<19));		(RCC->APB2RSTR&=~(1<<19));}while(0)
 #define UART5_REG_RESET()		do{(RCC->APB1RSTR1|=(1<<20));		(RCC->APB1RSTR1&=~(1<<20));}while(0)
 
+/*
+ * Clock source selection macros for I2Cx peripherals (CCIPR)
+ * Configuran el I2C para usar HSI16 (valor 10 en los bits correspondientes)
+ */
+
+// I2C1: bits 12 y 13 del CCIPR
+#define I2C1_CCLK_HSI16()    do { RCC->CCIPR &= ~(3 << 12); RCC->CCIPR |= (2 << 12); } while(0)
+
+// I2C2: bits 14 y 15 del CCIPR
+#define I2C2_CCLK_HSI16()    do { RCC->CCIPR &= ~(3 << 14); RCC->CCIPR |= (2 << 14); } while(0)
+
+// I2C3: bits 16 y 17 del CCIPR
+#define I2C3_CCLK_HSI16()    do { RCC->CCIPR &= ~(3 << 16); RCC->CCIPR |= (2 << 16); } while(0)
+
+/* Macro para encender el oscilador HSI16 si estuviera apagado */
+#define HSI16_ENABLE()       do { RCC->CR |= (1 << 8); while(!(RCC->CR & (1 << 10))); } while(0)
+
 
 /*
  * IRQ (Interrupt request) Numbers of STM32L475 MCU
@@ -624,6 +641,10 @@ typedef struct
 #define I2C_ICR_PECCF          11
 #define I2C_ICR_TIMOUTCF       12
 #define I2C_ICR_ALERTCF        13
+
+#define I2C_OAR1_OA1			0
+#define I2C_OAR1_OA1MODE		10
+#define I2C_OAR1_OA1EN			15
 
 
 #define I2C_RXDR_RXDATA        0

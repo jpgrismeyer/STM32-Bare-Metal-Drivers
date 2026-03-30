@@ -1,4 +1,9 @@
 /*
+ * 007spi_txonly_esp32.c
+ *
+ *  Created on: Mar 08, 2025
+ *      Author: @jpgrismeyer
+ *
  * Test the SPI SendData API to send the string "Hello World" and use the below configurations
  * 1. SPI1 Master Mode
  * 2. SCLK = Max possible

@@ -6,6 +6,66 @@
  */
 
 #include "stm32l47xx_usart_driver.h"
+#include <stddef.h>
+
+/*
+ * Computes the USART BRR value for a given peripheral clock and baud rate.
+ *
+ * This implementation assumes oversampling by 16, which is the default mode
+ * when the OVER8 bit in USART_CR1 is cleared.
+ *
+ * For oversampling by 16:
+ *
+ *     BRR = USART peripheral clock / baud rate
+ *
+ * Rounded division is used to reduce baud rate error.
+ */
+static uint32_t USART_ComputeBRR(uint32_t usart_clk, uint32_t baudrate)
+{
+    if (baudrate == 0U)
+    {
+        return 0U;
+    }
+
+    return (usart_clk + (baudrate / 2U)) / baudrate;
+}
+
+/*
+ * Returns the clock frequency used by the USART peripheral.
+ *
+ * Current implementation:
+ * - The driver assumes that the USART kernel clock is HSI16.
+ * - HSI16 runs at 16 MHz on STM32L4.
+ *
+ * Future improvement:
+ * - Read RCC->CCIPR to detect whether the USART clock source is PCLK,
+ *   SYSCLK, HSI16, or LSE.
+ * - Return the actual selected clock frequency.
+ */
+static uint32_t USART_GetClockValue(USART_RegDef_t *pUSARTx)
+{
+    (void)pUSARTx;
+
+    return USART_CLK_HSI16;
+}
+
+/*
+ * Configures the USART baud rate.
+ *
+ * The USART must be disabled before writing BRR if the baud rate is changed
+ * during runtime. During USART_Init(), this function is called while UE = 0.
+ *
+ * Current limitation:
+ * - Only oversampling by 16 is supported.
+ * - OVER8 must remain cleared.
+ */
+void USART_SetBaudRate(USART_RegDef_t *pUSARTx, uint32_t baudrate)
+{
+    uint32_t usart_clk = USART_GetClockValue(pUSARTx);
+
+    pUSARTx->BRR = USART_ComputeBRR(usart_clk, baudrate);
+}
+
 
 /*
  * Peripheral Clock setup
@@ -67,7 +127,7 @@ void USART_Init(USART_Handle_t *pUSARTHandle)
 	 *
 	 * @return            -
 	 *
-	 * @Note              - Resolve all the TODOs
+	 * @Note              -
 
 	 */
 	{
@@ -75,12 +135,14 @@ void USART_Init(USART_Handle_t *pUSARTHandle)
 		//Temporary variable
 		uint32_t tempreg=0;
 
+
+
 	/******************************** Configuration of CR1******************************************/
 
 		//Implement the code to enable the Clock for given USART peripheral
 		USART_PeriClockControl(pUSARTHandle->pUSARTx, ENABLE);
 
-
+		pUSARTHandle->pUSARTx->CR1 &= ~(1 << USART_CR1_UE);
 		//Enable USART Tx and Rx engines according to the USART_Mode configuration item
 		if ( pUSARTHandle->USART_Config.USART_Mode == USART_MODE_ONLY_RX)
 		{
@@ -119,9 +181,20 @@ void USART_Init(USART_Handle_t *pUSARTHandle)
 		    tempreg |= ( 1 << USART_CR1_PS);
 
 		}
+		/*
+		 * In STM32 USART, the baud rate generator depends on the oversampling mode.
+		 * Keeping OVER8 cleared makes the BRR calculation straightforward:
+		 *
+		 *     BRR = USART clock / baud rate
+		 *
+		 * Oversampling by 8 can be added later, but it requires a different BRR
+		 * encoding.
+		 */
+			tempreg &= ~( 1 << USART_CR1_OVER8);
 
 	   //Program the CR1 register
 		pUSARTHandle->pUSARTx->CR1 = tempreg;
+
 
 	/******************************** Configuration of CR2******************************************/
 
@@ -161,7 +234,12 @@ void USART_Init(USART_Handle_t *pUSARTHandle)
 	/******************************** Configuration of BRR(Baudrate register)******************************************/
 
 		//Implement the code to configure the baud rate
-		//We will cover this in the lecture. No action required here
+
+
+		USART_SetBaudRate(pUSARTHandle->pUSARTx, pUSARTHandle->USART_Config.USART_Baud);
+
+		/*************************** Enable the peripheral*************************************************************/
+		pUSARTHandle->pUSARTx->CR1 |= (1 << USART_CR1_UE);
 
 	}
 
@@ -213,50 +291,61 @@ uint8_t USART_GetFlagStatus(USART_RegDef_t *pUSARTx, uint32_t FlagName)
  * @Note              - Resolve all the TODOs
 
  */
-void USART_SendData(USART_Handle_t *pUSARTHandle,uint8_t *pTxBuffer, uint32_t Len)
+uint8_t USART_SendData(USART_Handle_t *pUSARTHandle,uint8_t *pTxBuffer, uint32_t Len)
 {
 
-	uint16_t *pdata;
-   //Loop over until "Len" number of bytes are transferred
-	for(uint32_t i = 0 ; i < Len; i++)
-	{	//aca quedamos
-		//Implement the code to wait until TXE flag is set in the SR
-		while(! USART_GetFlagStatus(pUSARTHandle->pUSARTx,USART_ISR_TXE));
+	uint32_t timeout;
 
-         //Check the USART_WordLength item for 9BIT or 8BIT in a frame
-		if(pUSARTHandle->USART_Config.USART_WordLength == USART_WORDLEN_9BITS)
-		{
-			//if 9BIT, load the DR with 2bytes masking the bits other than first 9 bits
-			pdata = (uint16_t*) pTxBuffer;
-			pUSARTHandle->pUSARTx->TDR = (*pdata & (uint16_t)0x01FF);
+	    if ((pUSARTHandle == NULL) || (pTxBuffer == NULL))
+	    {
+	        return USART_ERROR;
+	    }
 
-			//check for USART_ParityControl
-			if(pUSARTHandle->USART_Config.USART_ParityControl == USART_PARITY_DISABLE)
-			{
-				//No parity is used in this transfer. so, 9bits of user data will be sent
-				//Implement the code to increment pTxBuffer twice
-				pTxBuffer++;
-				pTxBuffer++;
-			}
-			else
-			{
-				//Parity bit is used in this transfer . so , 8bits of user data will be sent
-				//The 9th bit will be replaced by parity bit by the hardware
-				pTxBuffer++;
-			}
-		}
-		else
-		{
-			//This is 8bit data transfer
-			pUSARTHandle->pUSARTx->TDR = (*pTxBuffer  & (uint8_t)0xFF);
+	    if (Len == 0U)
+	    {
+	        return USART_OK;
+	    }
 
-			//Implement the code to increment the buffer address
-			pTxBuffer++;  //TODO
-		}
-	}
+	    for (uint32_t i = 0; i < Len; i++)
+	    {
+	        timeout = USART_TIMEOUT_COUNT;
 
-	//Implement the code to wait till TC flag is set in the SR
-	while( ! USART_GetFlagStatus(pUSARTHandle->pUSARTx,USART_ISR_TC));
+	        /*
+	         * Wait until the transmit data register is empty.
+	         * TXE/TXFNF means the USART is ready to accept a new byte in TDR.
+	         */
+	        while (!(pUSARTHandle->pUSARTx->ISR & (1U << USART_ISR_TXE)))
+	        {
+	            if (timeout-- == 0U)
+	            {
+	                return USART_TIMEOUT;
+	            }
+	        }
+
+	        /*
+	         * This driver currently supports 8-bit data transfers.
+	         * Only the lower 8 bits are written to TDR.
+	         */
+	        pUSARTHandle->pUSARTx->TDR = (*pTxBuffer & 0xFFU);
+	        pTxBuffer++;
+	    }
+
+	    timeout = USART_TIMEOUT_COUNT;
+
+	    /*
+	     * Wait until the last byte has completely shifted out.
+	     * TC is different from TXE: TXE only means TDR is empty, while TC means
+	     * the full frame, including stop bit, has been transmitted.
+	     */
+	    while (!(pUSARTHandle->pUSARTx->ISR & (1U << USART_ISR_TC)))
+	    {
+	        if (timeout-- == 0U)
+	        {
+	            return USART_TIMEOUT;
+	        }
+	    }
+
+	    return USART_OK;
 }
 
 
@@ -275,69 +364,43 @@ void USART_SendData(USART_Handle_t *pUSARTHandle,uint8_t *pTxBuffer, uint32_t Le
 
  */
 
-/*
-void USART_ReceiveData(USART_Handle_t *pUSARTHandle, uint8_t *pRxBuffer, uint32_t Len)
+
+uint8_t USART_ReceiveData(USART_Handle_t *pUSARTHandle, uint8_t *pRxBuffer, uint32_t Len)
 {
-   //Loop over until "Len" number of bytes are transferred
-	for(uint32_t i = 0 ; i < TODO; i++)
-	{
-		//Implement the code to wait until RXNE flag is set in the SR
-		//TODO
+	uint32_t timeout;
 
-		//Check the USART_WordLength to decide whether we are going to receive 9bit of data in a frame or 8 bit
-		if(pUSARTHandle->USART_Config.USART_WordLength == USART_WORDLEN_9BITS)
-		{
-			//We are going to receive 9bit data in a frame
+	    if ((pUSARTHandle == NULL) || (pRxBuffer == NULL))
+	    {
+	        return USART_ERROR;
+	    }
 
-			//check are we using USART_ParityControl control or not
-		/*	if(pUSARTHandle->USART_Config.USART_ParityControl == //TODO)
-			{
-				//No parity is used. so, all 9bits will be of user data
+	    for (uint32_t i = 0; i < Len; i++)
+	    {
+	        timeout = USART_TIMEOUT_COUNT;
 
-				//read only first 9 bits. so, mask the DR with 0x01FF
-				//*((uint16_t*) pRxBuffer) = (pUSARTHandle->pUSARTx->DR  & (uint16_t)TODO);
+	        /*
+	         * Wait until a byte is available in the receive data register.
+	         * RXNE/RXFNE means that RDR contains unread received data.
+	         */
+	        while (!(pUSARTHandle->pUSARTx->ISR & (1U << USART_ISR_RXNE)))
+	        {
+	            if (timeout-- == 0U)
+	            {
+	                return USART_TIMEOUT;
+	            }
+	        }
 
-				//Now increment the pRxBuffer two times
-				//TODO
-			}
-			else
-			{
-				//Parity is used, so, 8bits will be of user data and 1 bit is parity
-				 *pRxBuffer = (pUSARTHandle->pUSARTx->DR  & (uint8_t)0xFF);
+	        /*
+	         * This driver currently supports 8-bit data transfers.
+	         * Reading RDR clears the RXNE/RXFNE flag.
+	         */
+	        pRxBuffer[i] = (uint8_t)(pUSARTHandle->pUSARTx->RDR & 0xFFU);
+	    }
 
-				 //Increment the pRxBuffer
-				TODO
-			}
-		}
-		else
-		{
-			//We are going to receive 8bit data in a frame
-
-			//check are we using USART_ParityControl control or not
-			if(pUSARTHandle->USART_Config.USART_ParityControl == USART_PARITY_DISABLE)
-			{
-				//No parity is used , so all 8bits will be of user data
-
-				//read 8 bits from DR
-				 *pRxBuffer = TODO;
-			}
-
-			else
-			{
-				//Parity is used, so , 7 bits will be of user data and 1 bit is parity
-
-				//read only 7 bits , hence mask the DR with 0X7F
-				 *pRxBuffer = (uint8_t) TODO
-
-			}
-
-			//increment the pRxBuffer
-			pRxBuffer++;
-		}
-	}
+	    return USART_OK;
 
 }
-*/
+
 /*********************************************************************
  * @fn      		  - USART_SendDataWithIT
  *
@@ -433,7 +496,7 @@ void USART_PeripheralControl(USART_RegDef_t *pUSARTx, uint8_t EnOrDi){
 			pUSARTx->CR1 &= ~(1 << USART_CR1_UE);
 		}
 }
-uint8_t USART_GetFlagStatus(USART_RegDef_t *pUSARTx , uint32_t FlagName);
+//uint8_t USART_GetFlagStatus(USART_RegDef_t *pUSARTx , uint32_t FlagName);
 void USART_ClearFlag(USART_RegDef_t *pUSARTx, uint16_t StatusFlagName);
 
 /*

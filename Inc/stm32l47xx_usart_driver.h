@@ -48,7 +48,7 @@ typedef struct
  *Possible options for USART_Baud
  */
 #define USART_STD_BAUD_1200					1200
-#define USART_STD_BAUD_2400					400
+#define USART_STD_BAUD_2400					2400
 #define USART_STD_BAUD_9600					9600
 #define USART_STD_BAUD_19200 				19200
 #define USART_STD_BAUD_38400 				38400
@@ -60,6 +60,10 @@ typedef struct
 #define USART_STD_BAUD_2M 					2000000
 #define SUART_STD_BAUD_3M 					3000000
 
+#define USART_BAUD_115200  139
+#define USART_BAUD_9600    1667
+
+#define USART_CLK_HSI16     16000000U
 
 /*
  *@USART_ParityControl
@@ -94,6 +98,12 @@ typedef struct
 #define USART_HW_FLOW_CTRL_RTS    	2
 #define USART_HW_FLOW_CTRL_CTS_RTS	3
 
+#define USART_OK        0
+#define USART_TIMEOUT   -1
+#define USART_ERROR   -2
+
+#define USART_TIMEOUT_COUNT   100000   // ajustable
+
 
 
 /******************************************************************************************
@@ -115,8 +125,8 @@ void USART_DeInit(USART_RegDef_t *pUSARTx);
 /*
  * Data Send and Receive
  */
-void USART_SendData(USART_Handle_t *pUSARTHandle,uint8_t *pTxBuffer, uint32_t Len);
-void USART_ReceiveData(USART_RegDef_t *pUSARTx, uint8_t *pRxBuffer, uint32_t Len);
+uint8_t USART_SendData(USART_Handle_t *pUSARTHandle,uint8_t *pTxBuffer, uint32_t Len);
+uint8_t USART_ReceiveData(USART_Handle_t *pUSARTx, uint8_t *pRxBuffer, uint32_t Len);
 uint8_t USART_SendDataIT(USART_Handle_t *pUSARTHandle,uint8_t *pTxBuffer, uint32_t Len);
 uint8_t USART_ReceiveDataIT(USART_Handle_t *pUSARTHandle, uint8_t *pRxBuffer, uint32_t Len);
 
@@ -131,8 +141,8 @@ void USART_IRQHandling(USART_Handle_t *pHandle);
  * Other Peripheral Control APIs
  */
 void USART_PeripheralControl(USART_RegDef_t *pUSARTx, uint8_t EnOrDi);
-uint8_t USART_GetFlagStatus(USART_RegDef_t *pUSARTx , uint32_t FlagName);
-void USART_ClearFlag(USART_RegDef_t *pUSARTx, uint16_t StatusFlagName);
+static uint32_t USART_ComputeBRR(uint32_t usart_clk, uint32_t baudrate);
+
 
 /*
  * Application callback

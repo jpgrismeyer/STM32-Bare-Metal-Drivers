@@ -2,7 +2,7 @@
  * stm32l47xx.h
  *
  *  Created on: Jan 22, 2025
- *      Author: admin
+ *      Author: @juampagrismeyer
  */
 
 #ifndef INC_STM32L47XX_H_
@@ -74,7 +74,8 @@
 /*
  * Base addresses of peripherals which are hanging on AHB2 Bus
  */
-#define	GPIOA_BASEADDR					0x48000000U
+
+#define GPIOA_BASEADDR					0x48000000U
 #define	GPIOB_BASEADDR					0x48000400U
 #define	GPIOC_BASEADDR					0x48000800U
 #define	GPIOD_BASEADDR					0x48000C00U
@@ -85,6 +86,8 @@
 #define	OTG_FS_BASEADDR					0x50000000U
 #define	ADC_BASEADDR					0x50040000U
 #define	RNG_BASEADDR					0x50060800U
+
+
 
 /*
  * Base addresses of peripherals which are hanging on AHB3 Bus
@@ -489,6 +492,14 @@ typedef struct
 // I2C3: bits 16 y 17 del CCIPR
 #define I2C3_CCLK_HSI16()    do { RCC->CCIPR &= ~(3 << 16); RCC->CCIPR |= (2 << 16); } while(0)
 
+
+// USART1: bits 0 y 1 del CCIPR
+#define USART1_CCLK_HSI16()    do { RCC->CCIPR &= ~(3 << 0); RCC->CCIPR |= (2 << 0); } while(0)
+// USART2: bits 2 y 3 del CCIPR
+#define USART2_CCLK_HSI16()    do { RCC->CCIPR &= ~(3 << 2); RCC->CCIPR |= (2 << 2); } while(0)
+// USART3: bits 4 y 5 del CCIPR
+#define USART3_CCLK_HSI16()    do { RCC->CCIPR &= ~(3 << 4); RCC->CCIPR |= (2 << 4); } while(0)
+
 /* Macro para encender el oscilador HSI16 si estuviera apagado */
 #define HSI16_ENABLE()       do { RCC->CR |= (1 << 8); while(!(RCC->CR & (1 << 10))); } while(0)
 
@@ -673,7 +684,7 @@ typedef struct
 #define USART_CR1_M0				12
 #define USART_CR1_MME				13
 #define USART_CR1_CMIE				14
-#define USART_CR1_OVERS				15
+#define USART_CR1_OVER8				15
 #define USART_CR1_DEDT				16
 #define USART_CR1_DEAT				21
 #define USART_CR1_RTOIE				26
@@ -725,6 +736,7 @@ typedef struct
 #define USART_CR3_UCESM				23
 #define USART_CR3_TCBGTIE			24
 
+#define USART_ISR_RXNE				5
 #define USART_ISR_TC				6
 #define USART_ISR_TXE				7
 #define USART_ISR_BUSY				16
@@ -736,3 +748,4 @@ typedef struct
 #include "stm32l475xx_spi_driver.h"
 #include "stm32l47xx_i2c_driver.h"
 #include "stm32l47xx_usart_driver.h"
+#include "stm32l47xx_rcc_driver.h"

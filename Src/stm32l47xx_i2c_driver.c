@@ -34,50 +34,51 @@ void I2C_PeriClockControl(I2C_RegDef_t *pI2Cx, uint8_t EnorDi){
 
 void I2C_Init(I2C_Handle_t *pI2CHandle){
 
+	uint32_t tempreg = 0;
 
-		//Enable Peripheral clock
-		I2C_PeriClockControl(pI2CHandle->pI2Cx, ENABLE);
+	    // 1. Habilitar reloj del periférico
+	    I2C_PeriClockControl(pI2CHandle->pI2Cx, ENABLE);
 
-		uint32_t tempreg=0;
-	//--- Register CR1 ---
-	    // Peripheral Disable
-	    I2C_PeripheralControl(pI2CHandle->pI2Cx, DISABLE);
+	    // 2. Configuración de CR1 (Read-Modify-Write)
+	    I2C_PeripheralControl(pI2CHandle->pI2Cx, DISABLE); // Debe estar OFF para configurar
 
-	    //NoStretch config
+	    tempreg = pI2CHandle->pI2Cx->CR1;
 	    if (pI2CHandle->I2CConfig.I2C_NoStretch == I2C_NOSTRETCH_ENABLE) {
-	        tempreg |= (1 << I2C_CR1_NOSTRETCH); // Set NOSTRETCH bit
+	        tempreg |= (1 << I2C_CR1_NOSTRETCH);
 	    } else {
-	        tempreg &= ~(1 << I2C_CR1_NOSTRETCH); // Clear NOSTRETCH bit
+	        tempreg &= ~(1 << I2C_CR1_NOSTRETCH);
 	    }
 	    pI2CHandle->pI2Cx->CR1 = tempreg;
 
-	    //--- TIMINGR Register ---
-	    // In L4 series, this register represents the speed
-	    // Note: I2C_SCLSpeed must be the 32 bits hexadecimal value for TIMINGR
-		if (pI2CHandle->I2CConfig.I2C_SCLSpeed <= I2C_SCL_SPEED_SM)
-		{
-			// El usuario pidió 100kHz o menos -> Cargamos valor Standard Mode para 16MHz
-			pI2CHandle->pI2Cx->TIMINGR = I2C_TIMING_100KHZ_16MHZ;
-		}
-		else
-		{
-			// El usuario pidió más (asumimos 400kHz) -> Cargamos Fast Mode para 16MHz
-			pI2CHandle->pI2Cx->TIMINGR = I2C_TIMING_400KHZ_16MHZ;
-		}
+	    // 3. Configuración de TIMINGR (Sobreescritura directa, es un valor calculado)
+	    if (pI2CHandle->I2CConfig.I2C_SCLSpeed <= I2C_SCL_SPEED_5KHZ)
+	    {
+	        // Velocidad ultra lenta para pruebas o cables largos
+	        pI2CHandle->pI2Cx->TIMINGR = I2C_TIMING_5KHZ_16MHZ;
+	    }
+	    else if (pI2CHandle->I2CConfig.I2C_SCLSpeed <= I2C_SCL_SPEED_SM) {
+	        pI2CHandle->pI2Cx->TIMINGR = I2C_TIMING_100KHZ_16MHZ;
+	    } else {
+	        pI2CHandle->pI2Cx->TIMINGR = I2C_TIMING_400KHZ_16MHZ;
+	    }
 
-	    //--- OAR1 Register (Own Address) ---
-	    tempreg = 0;
-	    // Configure address (7 bits) shifted 1 position
+	    // 4. Configuración de OAR1 (Dirección propia)
+	    tempreg = pI2CHandle->pI2Cx->OAR1;
+	    tempreg &= ~((0x7F << 1) | (1 << I2C_OAR1_OA1EN)); // Limpiar antes
 	    tempreg |= (pI2CHandle->I2CConfig.I2C_DeviceAddress << 1);
-	    // Enable own address (OA1EN)
 	    tempreg |= (1 << I2C_OAR1_OA1EN);
 	    pI2CHandle->pI2Cx->OAR1 = tempreg;
 
-	    //--- REGISTRO CR2 ---
-	    //Disable autoend
-	    pI2CHandle->pI2Cx->CR2 &= ~(1 << I2C_CR2_AUTOEND);
+	    // 5. Configuración de CR2 (Default Autoend)
+	    tempreg = pI2CHandle->pI2Cx->CR2;
+	    if(pI2CHandle->I2CConfig.I2C_AutoEnd == ENABLE) {
+	        tempreg |= (1 << I2C_CR2_AUTOEND);
+	    } else {
+	        tempreg &= ~(1 << I2C_CR2_AUTOEND);
+	    }
+	    pI2CHandle->pI2Cx->CR2 = tempreg;
 
-	    //--- Peripheral Enable ---
+	    // 6. Habilitar periférico
 	    I2C_PeripheralControl(pI2CHandle->pI2Cx, ENABLE);
 
 }
@@ -98,107 +99,161 @@ void I2C_DeInit(I2C_RegDef_t *pI2Cx){
 }
 
 
-int I2C_MemRead(I2C_RegDef_t *pI2Cx, uint8_t SlaveAddr, uint8_t Reg, uint8_t *pBuf, uint32_t Len);
+//int I2C_MemRead(I2C_RegDef_t *pI2Cx, uint8_t SlaveAddr, uint8_t Reg, uint8_t *pBuf, uint32_t Len);
 
 
 
-uint8_t I2C_MasterSendData(I2C_Handle_t *pI2CHandle, uint8_t *pBuffer, uint32_t Len, uint8_t SlaveAddr){
+uint8_t I2C_MasterSendData(I2C_Handle_t *pI2CHandle, uint8_t *pBuffer, uint32_t Len, uint8_t SlaveAddr, uint8_t Sr){
 
-	uint32_t timeout_count = 0;
-	const uint32_t TIMEOUT_MAX = 100000; // Valor arbitrario para el ejemplo
-	uint32_t tempreg = 0;
+	uint32_t tempreg = pI2CHandle->pI2Cx->CR2;
+	uint32_t timeout_counter = 0;
+	uint32_t timeout_max = 1000000;
 
-	    // 1. Prepare the CR2 register configuration in a temporary variable (RAM)
-	    // Read the current state of CR2 to avoid overwriting unrelated bits
-	    tempreg = pI2CHandle->pI2Cx->CR2;
+	    // --- PASO 1: Limpieza del registro de control ---
+	    tempreg &= ~((0x3FF << I2C_CR2_SADD) |
+	                 (0xFF  << I2C_CR2_NBYTES) |
+	                 (1     << I2C_CR2_RD_WRN) |
+	                 (1     << I2C_CR2_START) |
+	                 (1     << I2C_CR2_STOP) );
 
-	    // Clear the fields we are about to configure:
-	    // SADD (0:9), NBYTES (16:23), RD_WRN (10), START (13), STOP (14)
-	    tempreg &= ~((0x3FF << I2C_CR2_SADD) | (0xFF << I2C_CR2_NBYTES) | (1 << I2C_CR2_RD_WRN) | (1 << I2C_CR2_START) | (1 << I2C_CR2_STOP));
-
-	    // A. Configure the Slave Address (SADD)
-	    // Shifted by 1 because bit 0 is reserved for 10-bit addressing mode
+	    // --- PASO 2: Configuración de la dirección y longitud ---
 	    tempreg |= ((SlaveAddr & 0x7F) << 1);
+	    tempreg |= (Len << I2C_CR2_NBYTES);
 
-	    // B. Configure the number of bytes to be transmitted (NBYTES)
-	    tempreg |= ((uint32_t)Len << I2C_CR2_NBYTES);
+	    // Modo Escritura (0)
+	    tempreg &= ~(1 << I2C_CR2_RD_WRN);
 
-	    // C. Set Transfer Direction to Write (RD_WRN = 0)
-	    // (Already cleared in the masking step above)
+	    // CONDICIONAL DE AUTOEND: Si el usuario lo configuró en el handle, se setea.
+		// Si vamos a usar Repeated Start (Sr=ENABLE), el AUTOEND DEBE estar deshabilitado.
+		if (pI2CHandle->I2CConfig.I2C_AutoEnd == I2C_AUTOEND_ENABLE )
+		{
+			tempreg |= (1 << I2C_CR2_AUTOEND);
+		}
 
-	    // D. Set the START bit in our temporary variable
+
+
+	    // --- PASO 3: Iniciar la comunicación ---
 	    tempreg |= (1 << I2C_CR2_START);
-
-	    // --- CRITICAL STEP: Atomic Update ---
-	    // Write the entire configuration to the actual CR2 register at once.
-	    // This triggers the hardware to generate the START condition and send the address.
 	    pI2CHandle->pI2Cx->CR2 = tempreg;
 
-
-	    // 2. Data Transmission Loop
-	        for(uint32_t i = 0; i < Len; i++)
+	    // --- PASO 4: Loop de envío de datos ---
+	    for (uint32_t i = 0; i < Len; i++)
+	    {
+	        // Esperamos a que el registro de transmisión esté vacío
+	        while ( !(pI2CHandle->pI2Cx->ISR & (1 << I2C_ISR_TXIS)) )
 	        {
-	            // Wait for TXIS (Ready to transmit) OR NACK (Error) OR Timeout
-	            timeout_count = 0;
-	            while( !(pI2CHandle->pI2Cx->ISR & (1 << I2C_ISR_TXIS)) )
-	            {
-	                // Check if Slave sent a NACK (NACKF bit 4)
-	                if(pI2CHandle->pI2Cx->ISR & (1 << I2C_ISR_NACKF)) {
-	                    pI2CHandle->pI2Cx->ICR |= (1 << I2C_ICR_NACKCF); // Clear NACK flag
-	                    pI2CHandle->pI2Cx->CR2 |= (1 << I2C_CR2_STOP); // Generate STOP
-	                    return I2C_ERROR_NACK;
-	                }
+					if (pI2CHandle->pI2Cx->ISR & (1 << I2C_ISR_NACKF))
+					{
+						pI2CHandle->pI2Cx->ICR |= (1 << I2C_ICR_NACKCF); // Limpiar NACK
+						pI2CHandle->pI2Cx->CR2 |= (1 << I2C_CR2_STOP);   // Forzar STOP para liberar bus
+						return I2C_ERROR_NACK; // Retorna 1
+					}
+					if (++timeout_counter >= timeout_max) return I2C_ERROR_TIMEOUT;
+				}
 
-	                // Safety Timeout
-	                if(timeout_count++ > TIMEOUT_MAX) return I2C_ERROR_TIMEOUT;
-	            }
+	        pI2CHandle->pI2Cx->TXDR = pBuffer[i];
+	    }
 
-	            pI2CHandle->pI2Cx->TXDR = pBuffer[i];
-	        }
+	    // --- PASO 5: Gestión de cierre ---
+	    if (pI2CHandle->I2CConfig.I2C_AutoEnd == ENABLE)
+	    {
+	        // Esperamos a que el hardware genere el STOP
+	        while ( !(pI2CHandle->pI2Cx->ISR & (1 << I2C_ISR_STOPF)) );
+	        // Limpiamos la bandera para la próxima vez
+	        pI2CHandle->pI2Cx->ICR |= (1 << I2C_ICR_STOPCF);
+	    }
+	    else
+	    {
+	// Si AUTOEND = 0, esperamos a que se terminen de mandar los bytes (TC)
+			while (!(pI2CHandle->pI2Cx->ISR & (1 << I2C_ISR_TC)));
 
-	        // 3. Wait for Transfer Complete (TC)
-	        timeout_count = 0;
-	        while( !(pI2CHandle->pI2Cx->ISR & (1 << I2C_ISR_TC)) ) {
-	            if(timeout_count++ > TIMEOUT_MAX) return I2C_ERROR_TIMEOUT;
-	        }
+			// Si NO hay Repeated Start, forzamos el STOP manual
+			if (Sr == I2C_SR_DISABLE)
+			{
+				pI2CHandle->pI2Cx->CR2 |= (1 << I2C_CR2_STOP);
+				while (!(pI2CHandle->pI2Cx->ISR & (1 << I2C_ISR_STOPF)));
+				pI2CHandle->pI2Cx->ICR |= (1 << I2C_ICR_STOPCF);
+			}
+			// Si Sr = ENABLE, salimos sin hacer nada. El bus queda ocupado.
+	    }
 
-	        // 4. Generate STOP
-	        pI2CHandle->pI2Cx->CR2 |= (1 << I2C_CR2_STOP);
 
-	        return I2C_ERROR_NONE;
+	    return I2C_ERROR_NONE;
 }
 
 
-uint8_t I2C_MasterReceiveData(I2C_Handle_t *pI2CHandle, uint8_t *pBuffer, uint32_t Len, uint8_t SlaveAddr)
+uint8_t I2C_MasterReceiveData(I2C_Handle_t *pI2CHandle, uint8_t *pBuffer, uint32_t Len, uint8_t SlaveAddr, uint8_t Sr)
 {
-    uint32_t tempreg = 0;
+	uint32_t timeout = 100000;
+	// 1. Asegurar que el registro CR2 esté limpio antes de configurar
+	    pI2CHandle->pI2Cx->CR2 &= ~((0x3FF << I2C_CR2_SADD) | (0xFF << I2C_CR2_NBYTES) | (1 << I2C_CR2_RD_WRN) | (1 << I2C_CR2_AUTOEND));
 
-    // 1. Prepare CR2 for Reception
-    tempreg = pI2CHandle->pI2Cx->CR2;
-    tempreg &= ~((0x3FF << I2C_CR2_SADD) | (0xFF << I2C_CR2_NBYTES) | (1 << I2C_CR2_RD_WRN) | (1 << I2C_CR2_START) | (1 << I2C_CR2_STOP));
+	// 1. CHEQUEO INTELIGENTE DE BUSY
+		// Espera si está ocupado (BUSY=1) Y nosotros NO tenemos el control (TC=0).
+		// Si TC=1, significa que venimos de un Transmit sin STOP (Repeated Start), entonces pasamos de largo.
+		//while ( (pI2CHandle->pI2Cx->ISR & (1 << I2C_ISR_BUSY)) && !(pI2CHandle->pI2Cx->ISR & (1 << I2C_ISR_TC)) );
 
-    tempreg |= ((SlaveAddr & 0x7F) << 1);
-    tempreg |= ((uint32_t)Len << I2C_CR2_NBYTES);
-    tempreg |= (1 << I2C_CR2_RD_WRN); // RD_WRN = 1 (READ MODE)
-    tempreg |= (1 << I2C_CR2_START); // START
+	    // 4. Configuración de CR2
+	    uint32_t tempreg = 0;
+	    tempreg |= ((uint32_t)SlaveAddr << 1);
+	    tempreg |= (Len << I2C_CR2_NBYTES);    // NBYTES suele ser la posición (16)
+	    tempreg |= (1U << I2C_CR2_RD_WRN);     // 1 = Read
 
-    pI2CHandle->pI2Cx->CR2 = tempreg;
+	    if (pI2CHandle->I2CConfig.I2C_AutoEnd == ENABLE) {
+	        tempreg |= (1U << I2C_CR2_AUTOEND);
+	    }
 
-    // 2. Receiving Loop
-    for(uint32_t i = 0; i < Len; i++)
-    {
-        // Wait for RXNE (Receive Not Empty) flag in ISR
-        while( !(pI2CHandle->pI2Cx->ISR & (1 << I2C_ISR_RXNE)) );
+	    // 5. Iniciar (Configuración + START en un solo paso)
+	    tempreg |= (1U << I2C_CR2_START);
+	    pI2CHandle->pI2Cx->CR2 = tempreg;
 
-        // Read data from RXDR
-        pBuffer[i] = pI2CHandle->pI2Cx->RXDR;
-    }
 
-    // 3. Wait for Transfer Complete and Generate STOP
-    while( !(pI2CHandle->pI2Cx->ISR & (1 << I2C_ISR_TC)) );
-    pI2CHandle->pI2Cx->CR2 |= (1 << I2C_CR2_STOP);
+	    // 6. Bucle de recepción
+	    for (uint32_t i = 0; i < Len; i++) {
+	        timeout = 100000;
 
-    return 0;
+	        // Esperar RXNE (bit 2)
+	        while (!(pI2CHandle->pI2Cx->ISR & (1U << I2C_ISR_RXNE))) {
+	            // Chequeo de NACK (bit 4)
+	            if (pI2CHandle->pI2Cx->ISR & (1U << I2C_ISR_NACKF)) {
+	                pI2CHandle->pI2Cx->ICR |= (1U << I2C_ICR_NACKCF);
+	                pI2CHandle->pI2Cx->CR2 |= (1U << I2C_CR2_STOP);
+	                return I2C_ERROR_NACK;
+	            }
+	            if (--timeout == 0) return I2C_ERROR_TIMEOUT;
+	        }
+	        // CREÁ ESTA VARIABLE TEMPORAL SOLO PARA DEBUGEAR
+	       // uint8_t valor_leido = (uint8_t)pI2CHandle->pI2Cx->RXDR;
+
+	        pBuffer[i] = (uint8_t)pI2CHandle->pI2Cx->RXDR;
+	        asm("nop"); // <--- PONÉ EL BREAKPOINT ACÁ
+
+	    }
+
+	    // 7. Cierre
+	    if (pI2CHandle->I2CConfig.I2C_AutoEnd == ENABLE) {
+	        timeout = 100000;
+	        while (!(pI2CHandle->pI2Cx->ISR & (1U << I2C_ISR_STOPF))) {
+	            if (--timeout == 0) return I2C_ERROR_TIMEOUT;
+	        }
+	        pI2CHandle->pI2Cx->ICR |= (1U << I2C_ICR_STOPCF);
+	    }
+	    else
+	    	{
+	    		// Esperamos a que los bytes terminen de entrar
+	    		while (!(pI2CHandle->pI2Cx->ISR & (1 << I2C_ISR_TC)));
+
+	    		// Si terminamos y NO hay Repeated Start pendiente, forzamos el STOP
+	    		if (Sr == I2C_SR_DISABLE)
+	    		{
+	    			pI2CHandle->pI2Cx->CR2 |= (1 << I2C_CR2_STOP);
+	    			while (!(pI2CHandle->pI2Cx->ISR & (1 << I2C_ISR_STOPF)));
+	    			pI2CHandle->pI2Cx->ICR |= (1 << I2C_ICR_STOPCF);
+	    		}
+	    	}
+
+	    return I2C_ERROR_NONE;
+
 }
 
 /*

@@ -1,5 +1,5 @@
 /*
- *  010I2C_MasterTx_testing.c
+ *  011I2C_MasterTx_testing.c
  *
  *  Created on: Ap 12, 2025
  *      Author: @jpgrismeyer
@@ -12,23 +12,23 @@
 
 #define MY_ADDR 0x61;
 
-#define SLAVE_ADDR  0x68
+#define SLAVE_ADDR  0x76
 
 void delay(void)
 {
 	for(uint32_t i = 0 ; i < 500000/2 ; i ++);
 }
 
-I2C_Handle_t I2C2Handle;
+I2C_Handle_t I2C1Handle;
 
 //some data
 uint8_t some_data[] = "We are testing I2C master Tx\n";
 /*
- * PB10-> SCL
- * PB11-> SDA
+ * PB8-> SCL
+ * PB9-> SDA
  */
 
-void I2C2_GPIOInits(void)
+void I2C1_GPIOInits(void)
 {
 	GPIO_Handle_t I2CPins;
 
@@ -46,26 +46,26 @@ void I2C2_GPIOInits(void)
 	I2CPins. GPIO_PinConfig.GPIO_PinSpeed = GPIO_SPEED_FAST;
 
 	//scl
-	I2CPins.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_10;
+	I2CPins.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_8;
 	GPIO_Init(&I2CPins);
 
 
 	//sda
-	I2CPins.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_11;
+	I2CPins.GPIO_PinConfig.GPIO_PinNumber = GPIO_PIN_NO_9;
 
 	GPIO_Init(&I2CPins);
 
 
 }
 
-void I2C2_Inits(void)
+void I2C1_Inits(void)
 {
-	I2C2Handle.pI2Cx = I2C2;
-	I2C2Handle.I2CConfig.I2C_DeviceAddress = MY_ADDR;
-	I2C2Handle.I2CConfig.I2C_SCLSpeed = I2C_SCL_SPEED_SM;
-	I2C2Handle.I2CConfig.I2C_NoStretch = I2C_NOSTRETCH_DISABLE;
+	I2C1Handle.pI2Cx = I2C1;
+	I2C1Handle.I2CConfig.I2C_DeviceAddress = MY_ADDR;
+	I2C1Handle.I2CConfig.I2C_SCLSpeed = I2C_SCL_SPEED_SM;
+	I2C1Handle.I2CConfig.I2C_NoStretch = I2C_NOSTRETCH_DISABLE;
 
-	I2C_Init(&I2C2Handle);
+	I2C_Init(&I2C1Handle);
 
 }
 
@@ -89,18 +89,18 @@ int main(void)
 {
 // 1. Configuración de Relojes del Sistema
 	HSI16_ENABLE();
-	I2C2_CCLK_HSI16();
+	I2C1_CCLK_HSI16();
 
 	GPIO_ButtonInit();
 
 	//i2c pin inits
-	I2C2_GPIOInits();
+	I2C1_GPIOInits();
 
 	//i2c peripheral configuration
-	I2C2_Inits();
+	I2C1_Inits();
 
 	//enable the i2c peripheral
-	I2C_PeripheralControl(I2C2,ENABLE);
+	I2C_PeripheralControl(I2C1,ENABLE);
 
 	while(1)
 	{
@@ -111,7 +111,7 @@ int main(void)
 		delay();
 
 		//send some data to the slave
-		I2C_MasterSendData(&I2C2Handle, &some_data, strlen((char*)some_data), SLAVE_ADDR);
+		I2C_MasterSendData(&I2C1Handle, &some_data, strlen((char*)some_data), SLAVE_ADDR);
 		//I2C_MasterSendData(&I2C2Handle,some_data,strlen((char*)some_data),SLAVE_ADDR,0);
 
 	}

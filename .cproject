@@ -70,11 +70,11 @@
 							<tool id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.objcopy.symbolsrec.912342887" name="MCU Output Converter Motorola S-rec with symbols" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.objcopy.symbolsrec"/>
 						</toolChain>
 					</folderInfo>
-					<fileInfo id="com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.debug.183367453.139454595" name="I2C_LedToggle.c" rcbsApplicability="disable" resourcePath="App/009I2C_LedToggle/I2C_LedToggle.c" toolsToInvoke="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.722576601.1629444474">
-						<tool id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.722576601.1629444474" name="MCU GCC Compiler" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.722576601"/>
+					<fileInfo id="com.st.stm32cube.ide.mcu.gnu.managedbuild.config.exe.debug.183367453.1783084624" name="022USART_TxRx_Echo.c" rcbsApplicability="disable" resourcePath="App/022USART_TxRx_Echo/022USART_TxRx_Echo.c" toolsToInvoke="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.722576601.361005061">
+						<tool id="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.722576601.361005061" name="MCU GCC Compiler" superClass="com.st.stm32cube.ide.mcu.gnu.managedbuild.tool.c.compiler.722576601"/>
 					</fileInfo>
 					<sourceEntries>
-						<entry excluding="009I2C_LedToggle/I2C_LedToggle.c|003led_button_ext/003led_button_ext.c|002led_button/002led_button.c|007SPI_TxSTM32_RxEsp32/007spi_txonly_esp32.c|006SPI_TxOnly/006spi_tx_testing.c|001Led_Toggle/001led_toggle.c|007spi_TxSTM32_RxEsp32/007spi_txonly_esp32.c|005button_interrupt/005button_interrupt.c|008SPIcmd_Handling/008SPIcmd_handling.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="App"/>
+						<entry excluding="022USART_TxRx_Echo/022USART_TxRx_Echo.c|021USART_TxRx_PingPong/21USART_TxRx_PingPong.c|015I2C_MasterRx_Debug/015I2C_MasterRx_Debug.c|020USART_TxRxecho/020USART_TxRxEcho.c|009I2C_LedToggle/I2C_LedToggle.c|003led_button_ext/003led_button_ext.c|007SPI_TxSTM32_RxEsp32/007spi_txonly_esp32.c|013I2C_MasterRx_Sensor/013I2C_MasterRx_Sensor.c|001Led_Toggle/001led_toggle.c|005button_interrupt/005button_interrupt.c|014I2C_MasterTxRx_OLED/014I2C_MasterTxRx_OLED.c|002led_button/002led_button.c|011I2C_MasterTx_testing/011I2C_MasterTx_testing.c|012I2C_MasterRx_testing/012I2C_MasterRx_testing.c|006SPI_TxOnly/006spi_tx_testing.c|007spi_TxSTM32_RxEsp32/007spi_txonly_esp32.c|010I2C_LedToggle/I2C_LedToggle.c|008SPIcmd_Handling/008SPIcmd_handling.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="App"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Inc"/>
 						<entry excluding="led.c|main.c|007spi_txonly_esp32.c|006spi_tx_testing.c" flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Src"/>
 						<entry flags="VALUE_WORKSPACE_PATH|RESOLVED" kind="sourcePath" name="Startup"/>

@@ -2,7 +2,7 @@
 
 Bare-metal peripheral drivers for the STM32L47xx family, developed from scratch using register-level programming without STM32 HAL or LL libraries.
 
-The project is focused on understanding how embedded drivers work underneath higher-level abstractions: memory-mapped registers, clock configuration, GPIO alternate functions, peripheral flags, bus protocols, and hardware validation.
+The project focuses on understanding how embedded drivers work underneath higher-level abstractions: memory-mapped registers, clock configuration, GPIO alternate functions, peripheral flags, bus protocols, and hardware validation on a real board.
 
 ## Target Hardware
 
@@ -23,14 +23,10 @@ The project is focused on understanding how embedded drivers work underneath hig
 
 ## Project Structure
 
-- `Inc/`  
-  Header files for MCU register definitions and peripheral drivers.
-
-- `Src/`  
-  Source files implementing the driver logic.
-
-- `App/`  
-  Example applications used to validate each driver on real hardware.
+- `Inc/`: MCU register definitions and peripheral driver headers
+- `Src/`: peripheral driver implementations
+- `App/`: bare-metal demo applications used to validate each driver
+- `tests/hil/`: Python hardware-in-the-loop tests using pytest and pyserial
 
 ## Example Applications
 
@@ -65,6 +61,7 @@ The project is focused on understanding how embedded drivers work underneath hig
 - `021USART_TxRx_PingPong`
 - `022USART_TxRx_Echo`
 - `023USART_TxRx_GPIO`
+- `024USART_TxRx_I2C_WHOAMI`
 
 ## Current Validation
 
@@ -79,11 +76,12 @@ Current validation includes:
 - I2C master transmit and receive
 - I2C sensor register reading
 - USART transmit and receive
-- USART command console for GPIO validation
+- USART command console for GPIO and I2C validation
+- Python hardware-in-the-loop tests over the ST-LINK Virtual COM Port
 
 ## USART Command Console
 
-The USART examples use the ST-LINK Virtual COM Port as a simple command interface between the PC and the board.
+The USART examples use the ST-LINK Virtual COM Port as a command interface between the PC and the board.
 
 Example commands:
 
@@ -92,27 +90,54 @@ Example commands:
 - `LED ON` -> `OK`
 - `LED OFF` -> `OK`
 - `BUTTON?` -> `PRESSED` or `RELEASED`
+- `I2C WHOAMI` -> `0xB1`
 
-This command interface will be reused to validate other drivers and sensors.
+The `I2C WHOAMI` command validates the onboard LPS22HB pressure sensor by reading its `WHO_AM_I` register through the custom I2C driver.
+
+## Hardware-In-The-Loop Tests
+
+The project includes pytest-based hardware-in-the-loop tests that communicate with the board over the ST-LINK Virtual COM Port.
+
+Install dependencies:
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+Run the tests:
+
+```powershell
+$env:STM32_PORT='COM4'
+$env:STM32_BAUD='9600'
+python -m pytest -m hil tests\hil -v
+```
+
+The current HIL test suite validates:
+
+- `PING`
+- `ECHO hello`
+- `LED ON`
+- `LED OFF`
+- `BUTTON?`
+- `I2C WHOAMI`
 
 ## Development Approach
 
 This project is built incrementally:
 
-1. Define MCU memory map and peripheral register structures.
+1. Define the MCU memory map and peripheral register structures.
 2. Implement low-level peripheral drivers.
 3. Validate each driver with small hardware examples.
-4. Combine drivers through simple application-level demos.
+4. Combine drivers through command-based demo applications.
 5. Add automated hardware-in-the-loop tests using Python and pytest.
 
 ## Roadmap
 
 Planned next steps:
 
-- add USART command for I2C sensor validation
-- add Python/pytest hardware-in-the-loop tests
 - improve USART receive using interrupts and ring buffers
 - expand SPI validation
+- add more sensor validation commands
 - add DMA-based examples
 - explore FreeRTOS integration with custom drivers
 
@@ -128,9 +153,6 @@ I am developing this project as part of my path toward embedded systems and firm
 
 Feel free to connect or reach out if you are interested in bare-metal development, STM32, RTOS, or embedded software engineering.
 
-
-* **Name:** Juan Pablo Grismeyer
-* **LinkedIn:** https://www.linkedin.com/in/juan-pablo-grismeyer-a392a0187/
-* **Email:** juampagrismeyer@gmail.com
-
-
+- Name: Juan Pablo Grismeyer
+- LinkedIn: https://www.linkedin.com/in/juan-pablo-grismeyer-a392a0187/
+- Email: juampagrismeyer@gmail.com

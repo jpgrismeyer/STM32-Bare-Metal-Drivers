@@ -7,3 +7,8 @@ obj/
 # Archivos temporales del IDE
 .settings/
 *.launch
+
+# Python test artifacts
+__pycache__/
+*.pyc
+.pytest_cache/

@@ -1,4 +1,5 @@
 #include "stm32l47xx.h"
+#include "ring_buffer.h"
 #include <string.h>
 
 #define CMD_BUFFER_SIZE 64
@@ -6,43 +7,10 @@
 
 USART_Handle_t USART1Handle;
 
-static volatile uint8_t rx_buffer[RX_BUFFER_SIZE];
-static volatile uint32_t rx_head = 0;
-static volatile uint32_t rx_tail = 0;
+static volatile uint8_t rx_storage[RX_BUFFER_SIZE];
+static RingBuffer_t usart_rx_buffer;
 
 void ProcessCommand(uint8_t *cmd);
-
-static uint8_t RingBuffer_IsFull(void)
-{
-	uint32_t next_head = (rx_head + 1U) % RX_BUFFER_SIZE;
-	return (next_head == rx_tail);
-}
-
-static uint8_t RingBuffer_IsEmpty(void)
-{
-	return (rx_head == rx_tail);
-}
-
-static void RingBuffer_Write(uint8_t data)
-{
-	if (!RingBuffer_IsFull())
-	{
-		rx_buffer[rx_head] = data;
-		rx_head = (rx_head + 1U) % RX_BUFFER_SIZE;
-	}
-}
-
-static uint8_t RingBuffer_Read(uint8_t *data)
-{
-	if (RingBuffer_IsEmpty())
-	{
-		return 0;
-	}
-
-	*data = rx_buffer[rx_tail];
-	rx_tail = (rx_tail + 1U) % RX_BUFFER_SIZE;
-	return 1;
-}
 
 //Initialize PB6 and PB7 as USART pins.
 void USART1_GPIOInits(void)
@@ -99,6 +67,7 @@ int main(void)
 
 	USART1_GPIOInits();
 	USART1_Inits();
+	RingBuffer_Init(&usart_rx_buffer, rx_storage, RX_BUFFER_SIZE);
 	USART1_RXInterruptEnable();
 
 	uint8_t ready[] = "READY\r\n";
@@ -106,7 +75,7 @@ int main(void)
 
 	while (1)
 	{
-		if (RingBuffer_Read(&rx))
+		if (RingBuffer_Read(&usart_rx_buffer, &rx))
 		{
 			if (rx == '\r' || rx == '\n')
 			{
@@ -162,6 +131,6 @@ void USART_ApplicationEventCallback(USART_Handle_t *pUSARTHandle, uint8_t AppEv)
 {
 	if (AppEv == USART_EVENT_RXNE)
 	{
-		RingBuffer_Write(pUSARTHandle->RxByte);
+		RingBuffer_Write(&usart_rx_buffer, pUSARTHandle->RxByte);
 	}
 }

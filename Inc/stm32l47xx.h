@@ -514,6 +514,9 @@ typedef struct
 #define IRQ_NO_EXTI3		 9
 #define IRQ_NO_EXTI4		 10
 #define IRQ_NO_EXTI9_5		 23
+#define IRQ_NO_USART1		 37
+#define IRQ_NO_USART2		 38
+#define IRQ_NO_USART3		 39
 #define IRQ_NO_EXTI15_10	 40
 
 /*

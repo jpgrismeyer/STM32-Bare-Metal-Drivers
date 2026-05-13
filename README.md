@@ -62,6 +62,8 @@ The project focuses on understanding how embedded drivers work underneath higher
 - `022USART_TxRx_Echo`
 - `023USART_TxRx_GPIO`
 - `024USART_TxRx_I2C_WHOAMI`
+- `025USART_RxInterrupt_RingBuffer`
+- `026USART_RxInterrupt_Callback`
 
 ## Current Validation
 
@@ -77,6 +79,8 @@ Current validation includes:
 - I2C sensor register reading
 - USART transmit and receive
 - USART command console for GPIO and I2C validation
+- USART RX interrupt handling with ring buffer
+- USART RX interrupt handling through driver callbacks
 - Python hardware-in-the-loop tests over the ST-LINK Virtual COM Port
 
 ## USART Command Console
@@ -93,6 +97,18 @@ Example commands:
 - `I2C WHOAMI` -> `0xB1`
 
 The `I2C WHOAMI` command validates the onboard LPS22HB pressure sensor by reading its `WHO_AM_I` register through the custom I2C driver.
+
+## USART Interrupt Reception
+
+The USART examples evolve from polling-based reception to interrupt-driven reception:
+
+- polling receive using `USART_ReceiveData()`
+- direct RX interrupt handling in `USART1_IRQHandler()`
+- driver-level IRQ handling through `USART_IRQHandling()`
+- application notification through `USART_ApplicationEventCallback()`
+- ring-buffer based command processing in the main loop
+
+This keeps the interrupt handler short while allowing the application to process complete commands outside interrupt context.
 
 ## Hardware-In-The-Loop Tests
 
@@ -135,7 +151,8 @@ This project is built incrementally:
 
 Planned next steps:
 
-- improve USART receive using interrupts and ring buffers
+- move the ring buffer into a reusable module
+- add pytest validation for the USART interrupt callback demo
 - expand SPI validation
 - add more sensor validation commands
 - add DMA-based examples

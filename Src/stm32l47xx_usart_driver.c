@@ -480,9 +480,63 @@ uint8_t USART_ReceiveDataIT(USART_Handle_t *pUSARTHandle,uint8_t *pRxBuffer, uin
 /*
  * IRQ Configuration and ISR handling
  */
-void USART_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi);
-void USART_IRQPriorityConfig(uint8_t IRQNumber, uint32_t IRQPriority);
-void USART_IRQHandling(USART_Handle_t *pHandle);
+void USART_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi)
+{
+	if(EnorDi == ENABLE)
+	{
+		if (IRQNumber <= 31)
+		{
+			*NVIC_ISER0 |= (1 << IRQNumber);
+		}
+		else if (IRQNumber > 31 && IRQNumber < 64)
+		{
+			*NVIC_ISER1 |= (1 << (IRQNumber % 32));
+		}
+		else if (IRQNumber >= 64 && IRQNumber < 96)
+		{
+			*NVIC_ISER2 |= (1 << (IRQNumber % 64));
+		}
+	}
+	else
+	{
+		if (IRQNumber <= 31)
+		{
+			*NVIC_ICER0 |= (1 << IRQNumber);
+		}
+		else if (IRQNumber > 31 && IRQNumber < 64)
+		{
+			*NVIC_ICER1 |= (1 << (IRQNumber % 32));
+		}
+		else if (IRQNumber >= 64 && IRQNumber < 96)
+		{
+			*NVIC_ICER2 |= (1 << (IRQNumber % 64));
+		}
+	}
+}
+
+void USART_IRQPriorityConfig(uint8_t IRQNumber, uint32_t IRQPriority)
+{
+	uint8_t iprx = IRQNumber / 4;
+	uint8_t iprx_section = IRQNumber % 4;
+	uint8_t shift_amount = (8 * iprx_section) + (8 - NO_PR_BITS_IMPLEMENTED);
+
+	*(NVIC_PR_BASE_ADDR + iprx) |= (IRQPriority << shift_amount);
+}
+
+void USART_EnableRXNEInterrupt(USART_Handle_t *pUSARTHandle)
+{
+	pUSARTHandle->pUSARTx->CR1 |= (1U << USART_CR1_RXNEIE);
+}
+
+void USART_IRQHandling(USART_Handle_t *pHandle)
+{
+	if ((pHandle->pUSARTx->ISR & (1U << USART_ISR_RXNE)) &&
+	    (pHandle->pUSARTx->CR1 & (1U << USART_CR1_RXNEIE)))
+	{
+		pHandle->RxByte = (uint8_t)(pHandle->pUSARTx->RDR & 0xFFU);
+		USART_ApplicationEventCallback(pHandle, USART_EVENT_RXNE);
+	}
+}
 
 /*
  * Other Peripheral Control APIs
@@ -502,4 +556,8 @@ void USART_ClearFlag(USART_RegDef_t *pUSARTx, uint16_t StatusFlagName);
 /*
  * Application callback
  */
-void USART_ApplicationEventCallback(USART_Handle_t *pUSARTHandle,uint8_t AppEv);
+__attribute__((weak)) void USART_ApplicationEventCallback(USART_Handle_t *pUSARTHandle,uint8_t AppEv)
+{
+	(void)pUSARTHandle;
+	(void)AppEv;
+}

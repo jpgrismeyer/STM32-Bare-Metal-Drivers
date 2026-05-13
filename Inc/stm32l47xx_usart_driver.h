@@ -31,6 +31,7 @@ typedef struct
 {
 	USART_RegDef_t *pUSARTx;
 	USART_Config_t   USART_Config;
+	uint8_t RxByte;
 }USART_Handle_t;
 
 
@@ -104,6 +105,11 @@ typedef struct
 
 #define USART_TIMEOUT_COUNT   100000   // ajustable
 
+/*
+ * USART application events
+ */
+#define USART_EVENT_RXNE      0
+
 
 
 /******************************************************************************************
@@ -136,6 +142,7 @@ uint8_t USART_ReceiveDataIT(USART_Handle_t *pUSARTHandle, uint8_t *pRxBuffer, ui
 void USART_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi);
 void USART_IRQPriorityConfig(uint8_t IRQNumber, uint32_t IRQPriority);
 void USART_IRQHandling(USART_Handle_t *pHandle);
+void USART_EnableRXNEInterrupt(USART_Handle_t *pUSARTHandle);
 
 /*
  * Other Peripheral Control APIs

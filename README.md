@@ -64,6 +64,7 @@ The project focuses on understanding how embedded drivers work underneath higher
 - `024USART_TxRx_I2C_WHOAMI`
 - `025USART_RxInterrupt_RingBuffer`
 - `026USART_RxInterrupt_Callback`
+- `027USART_Interrupt_CommandConsole`
 
 ## Current Validation
 
@@ -81,6 +82,7 @@ Current validation includes:
 - USART command console for GPIO and I2C validation
 - USART RX interrupt handling with ring buffer
 - USART RX interrupt handling through driver callbacks
+- interrupt-driven USART command console using the reusable ring buffer
 - Python hardware-in-the-loop tests over the ST-LINK Virtual COM Port
 
 ## USART Command Console
@@ -107,6 +109,7 @@ The USART examples evolve from polling-based reception to interrupt-driven recep
 - driver-level IRQ handling through `USART_IRQHandling()`
 - application notification through `USART_ApplicationEventCallback()`
 - ring-buffer based command processing in the main loop
+- interrupt-driven command console combining GPIO and I2C validation
 
 This keeps the interrupt handler short while allowing the application to process complete commands outside interrupt context.
 
@@ -151,8 +154,6 @@ This project is built incrementally:
 
 Planned next steps:
 
-- move the ring buffer into a reusable module
-- add pytest validation for the USART interrupt callback demo
 - expand SPI validation
 - add more sensor validation commands
 - add DMA-based examples

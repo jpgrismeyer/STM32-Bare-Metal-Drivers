@@ -148,7 +148,7 @@ void USART_EnableRXNEInterrupt(USART_Handle_t *pUSARTHandle);
  * Other Peripheral Control APIs
  */
 void USART_PeripheralControl(USART_RegDef_t *pUSARTx, uint8_t EnOrDi);
-static uint32_t USART_ComputeBRR(uint32_t usart_clk, uint32_t baudrate);
+void USART_SetBaudRate(USART_RegDef_t *pUSARTx, uint32_t baudrate);
 
 
 /*

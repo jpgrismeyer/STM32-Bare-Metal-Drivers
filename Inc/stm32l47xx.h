@@ -472,10 +472,10 @@ typedef struct
 #define I2C2_REG_RESET()    do{ (RCC->APB1RSTR1 |= (1 << 22)); (RCC->APB1RSTR1 &= ~(1 << 22)); }while(0)
 #define I2C3_REG_RESET()    do{ (RCC->APB1RSTR1 |= (1 << 30)); (RCC->APB1RSTR1 &= ~(1 << 30)); }while(0)
 
-#define USART1_REG_RESET()		do{(RCC->APB1RSTR2|=(1<<0));		(RCC->APB1RSTR2&=~(1<<0));}while(0)
+#define USART1_REG_RESET()		do{(RCC->APB2RSTR|=(1<<14));		(RCC->APB2RSTR&=~(1<<14));}while(0)
 #define USART2_REG_RESET()		do{(RCC->APB1RSTR1|=(1<<17));		(RCC->APB1RSTR1&=~(1<<17));}while(0)
 #define USART3_REG_RESET()		do{(RCC->APB1RSTR1|=(1<<18));		(RCC->APB1RSTR1&=~(1<<18));}while(0)
-#define UART4_REG_RESET()		do{(RCC->APB2RSTR|=(1<<19));		(RCC->APB2RSTR&=~(1<<19));}while(0)
+#define UART4_REG_RESET()		do{(RCC->APB1RSTR1|=(1<<19));		(RCC->APB1RSTR1&=~(1<<19));}while(0)
 #define UART5_REG_RESET()		do{(RCC->APB1RSTR1|=(1<<20));		(RCC->APB1RSTR1&=~(1<<20));}while(0)
 
 /*

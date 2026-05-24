@@ -32,6 +32,7 @@ typedef struct
 	USART_RegDef_t *pUSARTx;
 	USART_Config_t   USART_Config;
 	uint8_t RxByte;
+	uint32_t ErrorCode;
 }USART_Handle_t;
 
 
@@ -99,16 +100,35 @@ typedef struct
 #define USART_HW_FLOW_CTRL_RTS    	2
 #define USART_HW_FLOW_CTRL_CTS_RTS	3
 
-#define USART_OK        0
-#define USART_TIMEOUT   -1
-#define USART_ERROR   -2
+/*
+ * Return codes.
+ * Using positive uint8_t-safe values avoids signed/unsigned mismatch
+ * when the caller stores the result in a uint8_t variable.
+ */
+#define USART_OK        0U
+#define USART_TIMEOUT   1U
+#define USART_ERROR     2U
 
 #define USART_TIMEOUT_COUNT   100000   // ajustable
 
 /*
+ * USART error code flags
+ */
+#define USART_ERROR_NONE       0x00000000U
+#define USART_ERROR_PE         0x00000001U
+#define USART_ERROR_FE         0x00000002U
+#define USART_ERROR_NE         0x00000004U
+#define USART_ERROR_ORE        0x00000008U
+
+/*
  * USART application events
  */
-#define USART_EVENT_RXNE      0
+#define USART_EVENT_RXNE       0
+#define USART_EVENT_ERR_PE     1
+#define USART_EVENT_ERR_FE     2
+#define USART_EVENT_ERR_NE     3
+#define USART_EVENT_ERR_ORE    4
+#define USART_EVENT_ERR        5
 
 
 
@@ -133,8 +153,9 @@ void USART_DeInit(USART_RegDef_t *pUSARTx);
  */
 uint8_t USART_SendData(USART_Handle_t *pUSARTHandle,uint8_t *pTxBuffer, uint32_t Len);
 uint8_t USART_ReceiveData(USART_Handle_t *pUSARTx, uint8_t *pRxBuffer, uint32_t Len);
-uint8_t USART_SendDataIT(USART_Handle_t *pUSARTHandle,uint8_t *pTxBuffer, uint32_t Len);
-uint8_t USART_ReceiveDataIT(USART_Handle_t *pUSARTHandle, uint8_t *pRxBuffer, uint32_t Len);
+/* TODO: non-blocking TX/RX via interrupt — requires TX buffer + busy state in handle */
+/* uint8_t USART_SendDataIT(USART_Handle_t *pUSARTHandle, uint8_t *pTxBuffer, uint32_t Len);    */
+/* uint8_t USART_ReceiveDataIT(USART_Handle_t *pUSARTHandle, uint8_t *pRxBuffer, uint32_t Len); */
 
 /*
  * IRQ Configuration and ISR handling
@@ -143,12 +164,15 @@ void USART_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi);
 void USART_IRQPriorityConfig(uint8_t IRQNumber, uint32_t IRQPriority);
 void USART_IRQHandling(USART_Handle_t *pHandle);
 void USART_EnableRXNEInterrupt(USART_Handle_t *pUSARTHandle);
+void USART_EnableErrorInterrupts(USART_Handle_t *pUSARTHandle);
 
 /*
  * Other Peripheral Control APIs
  */
 void USART_PeripheralControl(USART_RegDef_t *pUSARTx, uint8_t EnOrDi);
 void USART_SetBaudRate(USART_RegDef_t *pUSARTx, uint32_t baudrate);
+uint32_t USART_GetErrorCode(USART_Handle_t *pUSARTHandle);
+void USART_ClearErrorCode(USART_Handle_t *pUSARTHandle);
 
 
 /*

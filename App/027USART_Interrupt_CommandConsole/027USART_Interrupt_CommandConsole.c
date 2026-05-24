@@ -15,6 +15,7 @@ I2C_Handle_t I2C2Handle;
 
 static volatile uint8_t rx_storage[RX_BUFFER_SIZE];
 static RingBuffer_t usart_rx_buffer;
+static volatile uint32_t usart_error_events;
 
 void ProcessCommand(uint8_t *cmd);
 
@@ -90,6 +91,7 @@ void USART1_Inits(void)
 static void USART1_RXInterruptEnable(void)
 {
 	USART_EnableRXNEInterrupt(&USART1Handle);
+	USART_EnableErrorInterrupts(&USART1Handle);
 
 	USART_IRQPriorityConfig(IRQ_NO_USART1, NVIC_IRQ_PRI15);
 	USART_IRQInterruptConfig(IRQ_NO_USART1, ENABLE);
@@ -151,6 +153,47 @@ int main(void)
 
 	while (1)
 	{
+		/*
+		 * Atomically snapshot and clear usart_error_events.
+		 *
+		 * usart_error_events is written inside the USART ISR, so a plain
+		 * read-modify-write (read / BIC / store) in the main loop is not safe:
+		 * the ISR could fire between the load and the store and its update
+		 * would be silently overwritten. Disabling interrupts for the two
+		 * instructions that touch the shared variable closes the race window.
+		 */
+		__disable_irq();
+		uint32_t errors = usart_error_events;
+		usart_error_events = USART_ERROR_NONE;
+		__enable_irq();
+
+		if (errors != USART_ERROR_NONE)
+		{
+
+			if (errors & USART_ERROR_PE)
+			{
+				uint8_t response[] = "ERR:PARITY\r\n";
+				USART_SendData(&USART1Handle, response, sizeof(response) - 1);
+			}
+			if (errors & USART_ERROR_FE)
+			{
+				uint8_t response[] = "ERR:FRAMING\r\n";
+				USART_SendData(&USART1Handle, response, sizeof(response) - 1);
+			}
+			if (errors & USART_ERROR_NE)
+			{
+				uint8_t response[] = "ERR:NOISE\r\n";
+				USART_SendData(&USART1Handle, response, sizeof(response) - 1);
+			}
+			if (errors & USART_ERROR_ORE)
+			{
+				uint8_t response[] = "ERR:OVERRUN\r\n";
+				USART_SendData(&USART1Handle, response, sizeof(response) - 1);
+			}
+
+			USART_ClearErrorCode(&USART1Handle);
+		}
+
 		if (RingBuffer_Read(&usart_rx_buffer, &rx))
 		{
 			if (rx == '\r' || rx == '\n')
@@ -269,5 +312,21 @@ void USART_ApplicationEventCallback(USART_Handle_t *pUSARTHandle, uint8_t AppEv)
 	if (AppEv == USART_EVENT_RXNE)
 	{
 		RingBuffer_Write(&usart_rx_buffer, pUSARTHandle->RxByte);
+	}
+	else if (AppEv == USART_EVENT_ERR_PE)
+	{
+		usart_error_events |= USART_ERROR_PE;
+	}
+	else if (AppEv == USART_EVENT_ERR_FE)
+	{
+		usart_error_events |= USART_ERROR_FE;
+	}
+	else if (AppEv == USART_EVENT_ERR_NE)
+	{
+		usart_error_events |= USART_ERROR_NE;
+	}
+	else if (AppEv == USART_EVENT_ERR_ORE)
+	{
+		usart_error_events |= USART_ERROR_ORE;
 	}
 }

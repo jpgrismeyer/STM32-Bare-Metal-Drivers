@@ -1,10 +1,12 @@
-# Carpetas de compilación
+# Build output
 Debug/
 Release/
 bin/
 obj/
 
-# Archivos temporales del IDE
+# STM32CubeIDE project files (machine-specific, not useful for reviewers)
+.cproject
+.project
 .settings/
 *.launch
 

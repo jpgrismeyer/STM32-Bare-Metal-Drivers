@@ -2,7 +2,7 @@
  * stm32l47xx_usart_driver.c
  *
  *  Created on: May 30, 2025
- *      Author: admin
+ *      Author: Juan Pablo Grismeyer
  */
 
 #include "stm32l47xx_usart_driver.h"
@@ -47,6 +47,58 @@ static uint32_t USART_GetClockValue(USART_RegDef_t *pUSARTx)
     (void)pUSARTx;
 
     return USART_CLK_HSI16;
+}
+
+static uint32_t USART_GetHardwareErrorFlags(USART_RegDef_t *pUSARTx)
+{
+	uint32_t isr = pUSARTx->ISR;
+	uint32_t errors = USART_ERROR_NONE;
+
+	if (isr & (1U << USART_ISR_PE))
+	{
+		errors |= USART_ERROR_PE;
+	}
+	if (isr & (1U << USART_ISR_FE))
+	{
+		errors |= USART_ERROR_FE;
+	}
+	if (isr & (1U << USART_ISR_NE))
+	{
+		errors |= USART_ERROR_NE;
+	}
+	if (isr & (1U << USART_ISR_ORE))
+	{
+		errors |= USART_ERROR_ORE;
+	}
+
+	return errors;
+}
+
+static void USART_ClearHardwareErrorFlags(USART_RegDef_t *pUSARTx, uint32_t errors)
+{
+	uint32_t icr = 0;
+
+	if (errors & USART_ERROR_PE)
+	{
+		icr |= (1U << USART_ICR_PECF);
+	}
+	if (errors & USART_ERROR_FE)
+	{
+		icr |= (1U << USART_ICR_FECF);
+	}
+	if (errors & USART_ERROR_NE)
+	{
+		icr |= (1U << USART_ICR_NECF);
+	}
+	if (errors & USART_ERROR_ORE)
+	{
+		icr |= (1U << USART_ICR_ORECF);
+	}
+
+	if (icr != 0U)
+	{
+		pUSARTx->ICR = icr;
+	}
 }
 
 /*
@@ -141,6 +193,7 @@ void USART_Init(USART_Handle_t *pUSARTHandle)
 
 		//Implement the code to enable the Clock for given USART peripheral
 		USART_PeriClockControl(pUSARTHandle->pUSARTx, ENABLE);
+		pUSARTHandle->ErrorCode = USART_ERROR_NONE;
 
 		pUSARTHandle->pUSARTx->CR1 &= ~(1 << USART_CR1_UE);
 		//Enable USART Tx and Rx engines according to the USART_Mode configuration item
@@ -384,10 +437,26 @@ uint8_t USART_ReceiveData(USART_Handle_t *pUSARTHandle, uint8_t *pRxBuffer, uint
 	         */
 	        while (!(pUSARTHandle->pUSARTx->ISR & (1U << USART_ISR_RXNE)))
 	        {
+	        	uint32_t errors = USART_GetHardwareErrorFlags(pUSARTHandle->pUSARTx);
+	        	if (errors != USART_ERROR_NONE)
+	        	{
+	        		pUSARTHandle->ErrorCode |= errors;
+	        		USART_ClearHardwareErrorFlags(pUSARTHandle->pUSARTx, errors);
+	        		return USART_ERROR;
+	        	}
+
 	            if (timeout-- == 0U)
 	            {
 	                return USART_TIMEOUT;
 	            }
+	        }
+
+	        uint32_t errors = USART_GetHardwareErrorFlags(pUSARTHandle->pUSARTx);
+	        if (errors != USART_ERROR_NONE)
+	        {
+	        	pUSARTHandle->ErrorCode |= errors;
+	        	USART_ClearHardwareErrorFlags(pUSARTHandle->pUSARTx, errors);
+	        	return USART_ERROR;
 	        }
 
 	        /*
@@ -417,65 +486,13 @@ uint8_t USART_ReceiveData(USART_Handle_t *pUSARTHandle, uint8_t *pRxBuffer, uint
  */
 
 /*
-uint8_t USART_SendDataIT(USART_Handle_t *pUSARTHandle,uint8_t *pTxBuffer, uint32_t Len)
-{
-	uint8_t txstate = pUSARTHandle->TODO;
-
-	if(txstate != USART_BUSY_IN_TX)
-	{
-		pUSARTHandle->TODO = Len;
-		pUSARTHandle->pTxBuffer = TODO;
-		pUSARTHandle->TxBusyState = TODO;
-
-		//Implement the code to enable interrupt for TXE
-		TODO
-
-
-		//Implement the code to enable interrupt for TC
-		TODO
-
-
-	}
-
-	return txstate;
-
-}
-
-
-/*********************************************************************
- * @fn      		  - USART_ReceiveDataIT
+ * TODO: USART_SendDataIT() / USART_ReceiveDataIT()
  *
- * @brief             -
- *
- * @param[in]         -
- * @param[in]         -
- * @param[in]         -
- *
- * @return            -
- *
- * @Note              - Resolve all the TODOs
-
+ * Non-blocking TX/RX requires the handle to store a TX buffer pointer,
+ * a remaining byte count, and a busy flag so the ISR can feed TDR
+ * byte-by-byte without blocking the caller.
+ * Declarations are commented out in the header until implemented.
  */
-/*
-uint8_t USART_ReceiveDataIT(USART_Handle_t *pUSARTHandle,uint8_t *pRxBuffer, uint32_t Len)
-{
-	uint8_t rxstate = pUSARTHandle->TODO;
-
-	if(rxstate != TODO)
-	{
-		pUSARTHandle->RxLen = Len;
-		pUSARTHandle->pRxBuffer = TODO;
-		pUSARTHandle->RxBusyState = TODO;
-
-		//Implement the code to enable interrupt for RXNE
-		TODO
-
-	}
-
-	return rxstate;
-
-}
-*/
 
 /*
  * IRQ Configuration and ISR handling
@@ -525,11 +542,74 @@ void USART_IRQPriorityConfig(uint8_t IRQNumber, uint32_t IRQPriority)
 
 void USART_EnableRXNEInterrupt(USART_Handle_t *pUSARTHandle)
 {
+	if (pUSARTHandle == NULL)
+	{
+		return;
+	}
+
 	pUSARTHandle->pUSARTx->CR1 |= (1U << USART_CR1_RXNEIE);
+}
+
+void USART_EnableErrorInterrupts(USART_Handle_t *pUSARTHandle)
+{
+	if (pUSARTHandle == NULL)
+	{
+		return;
+	}
+
+	/*
+	 * PEIE enables parity error interrupt.
+	 * EIE enables frame, noise and overrun error interrupts.
+	 */
+	pUSARTHandle->pUSARTx->CR1 |= (1U << USART_CR1_PEIE);
+	pUSARTHandle->pUSARTx->CR3 |= (1U << USART_CR3_EIE);
 }
 
 void USART_IRQHandling(USART_Handle_t *pHandle)
 {
+	if (pHandle == NULL)
+	{
+		return;
+	}
+
+	uint32_t errors = USART_GetHardwareErrorFlags(pHandle->pUSARTx);
+	uint32_t enabled_errors = USART_ERROR_NONE;
+
+	if ((errors & USART_ERROR_PE) && (pHandle->pUSARTx->CR1 & (1U << USART_CR1_PEIE)))
+	{
+		enabled_errors |= USART_ERROR_PE;
+	}
+	if ((errors & (USART_ERROR_FE | USART_ERROR_NE | USART_ERROR_ORE)) &&
+	    (pHandle->pUSARTx->CR3 & (1U << USART_CR3_EIE)))
+	{
+		enabled_errors |= (errors & (USART_ERROR_FE | USART_ERROR_NE | USART_ERROR_ORE));
+	}
+
+	if (enabled_errors != USART_ERROR_NONE)
+	{
+		pHandle->ErrorCode |= enabled_errors;
+		USART_ClearHardwareErrorFlags(pHandle->pUSARTx, enabled_errors);
+
+		if (enabled_errors & USART_ERROR_PE)
+		{
+			USART_ApplicationEventCallback(pHandle, USART_EVENT_ERR_PE);
+		}
+		if (enabled_errors & USART_ERROR_FE)
+		{
+			USART_ApplicationEventCallback(pHandle, USART_EVENT_ERR_FE);
+		}
+		if (enabled_errors & USART_ERROR_NE)
+		{
+			USART_ApplicationEventCallback(pHandle, USART_EVENT_ERR_NE);
+		}
+		if (enabled_errors & USART_ERROR_ORE)
+		{
+			USART_ApplicationEventCallback(pHandle, USART_EVENT_ERR_ORE);
+		}
+
+		USART_ApplicationEventCallback(pHandle, USART_EVENT_ERR);
+	}
+
 	if ((pHandle->pUSARTx->ISR & (1U << USART_ISR_RXNE)) &&
 	    (pHandle->pUSARTx->CR1 & (1U << USART_CR1_RXNEIE)))
 	{
@@ -551,7 +631,30 @@ void USART_PeripheralControl(USART_RegDef_t *pUSARTx, uint8_t EnOrDi){
 		}
 }
 //uint8_t USART_GetFlagStatus(USART_RegDef_t *pUSARTx , uint32_t FlagName);
-void USART_ClearFlag(USART_RegDef_t *pUSARTx, uint16_t StatusFlagName);
+void USART_ClearFlag(USART_RegDef_t *pUSARTx, uint16_t StatusFlagName)
+{
+	pUSARTx->ICR = StatusFlagName;
+}
+
+uint32_t USART_GetErrorCode(USART_Handle_t *pUSARTHandle)
+{
+	if (pUSARTHandle == NULL)
+	{
+		return USART_ERROR_NONE;
+	}
+
+	return pUSARTHandle->ErrorCode;
+}
+
+void USART_ClearErrorCode(USART_Handle_t *pUSARTHandle)
+{
+	if (pUSARTHandle == NULL)
+	{
+		return;
+	}
+
+	pUSARTHandle->ErrorCode = USART_ERROR_NONE;
+}
 
 /*
  * Application callback

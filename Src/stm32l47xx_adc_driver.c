@@ -7,6 +7,7 @@
 
 
 #include "stm32l47xx_adc_driver.h"
+#include <stddef.h>
 
 #define ADC_TIMEOUT_COUNT   100000U
 

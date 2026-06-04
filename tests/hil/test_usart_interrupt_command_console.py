@@ -26,3 +26,10 @@ def test_interrupt_console_button_query(send_command):
 
 def test_interrupt_console_i2c_whoami(send_command):
     assert send_command("I2C WHOAMI") == "0xB1"
+
+
+def test_interrupt_console_usart_status(send_command):
+    response = send_command("USART STATUS")
+    assert response.startswith("ISR=0x")
+    assert " BRR=0x" in response
+    assert " ERR=0x" in response

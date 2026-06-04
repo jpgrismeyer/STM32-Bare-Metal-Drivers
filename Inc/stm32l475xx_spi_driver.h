@@ -98,6 +98,12 @@ typedef struct
 #define SPI_TXE_FLAG		(1 << SPI_SR_TXE)
 #define SPI_RXNE_FLAG		(1 << SPI_SR_RXNE)
 #define SPI_BUSY_FLAG		(1 << SPI_SR_BSY)
+
+#define SPI_OK              0
+#define SPI_TIMEOUT         1
+#define SPI_ERROR           2
+
+#define SPI_TIMEOUT_COUNT   100000U
 /*Peripheral Clock setup
  *
  */
@@ -116,6 +122,9 @@ void SPI_DeInit(SPI_RegDef_t *pSPIx);
 
 void SPI_SendData (SPI_RegDef_t *pSPIx, uint8_t *pTxBuffer, uint32_t Len);
 void SPI_ReceiveData (SPI_RegDef_t *pSPIx, uint8_t *pRxBuffer, uint32_t Len);
+uint8_t SPI_SendDataWithStatus(SPI_RegDef_t *pSPIx, uint8_t *pTxBuffer, uint32_t Len);
+uint8_t SPI_ReceiveDataWithStatus(SPI_RegDef_t *pSPIx, uint8_t *pRxBuffer, uint32_t Len);
+uint8_t SPI_GetFlagStatus(SPI_RegDef_t *pSPIx, uint32_t FlagName);
 
 /*
  *IRQ Configuration and ISR handling

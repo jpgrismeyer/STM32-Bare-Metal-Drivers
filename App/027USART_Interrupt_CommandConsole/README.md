@@ -29,6 +29,7 @@ Incoming bytes are received by the USART interrupt handler, forwarded to the app
 - `LED OFF` -> `OK`
 - `BUTTON?` -> `PRESSED` or `RELEASED`
 - `I2C WHOAMI` -> `0xB1`
+- `USART STATUS` -> `ISR=0x... BRR=0x... ERR=0x...`
 
 ## Firmware Flow
 
@@ -40,3 +41,28 @@ Incoming bytes are received by the USART interrupt handler, forwarded to the app
 6. The main loop reads the ring buffer and processes complete commands.
 
 This keeps the interrupt path short while allowing the application to handle higher-level command parsing outside the ISR.
+
+## USART Error Handling
+
+This example also enables USART error interrupts through `USART_EnableErrorInterrupts()`.
+
+The driver detects:
+
+- parity error
+- framing error
+- noise error
+- overrun error
+
+When an error is detected, the driver stores it in `USART_Handle_t.ErrorCode`, clears the hardware flag through `ICR`, and notifies the application through `USART_ApplicationEventCallback()`.
+
+The callback only stores an application-level error flag. The main loop later sends the error response over USART, keeping blocking work out of the interrupt path.
+
+## Diagnostic Command
+
+`USART STATUS` reports selected USART registers and the driver error code:
+
+- `ISR`: USART interrupt and status register
+- `BRR`: baud rate register
+- `ERR`: accumulated driver error flags from `USART_Handle_t.ErrorCode`
+
+This command is useful for checking the USART state from the serial console without stopping the firmware in the debugger.

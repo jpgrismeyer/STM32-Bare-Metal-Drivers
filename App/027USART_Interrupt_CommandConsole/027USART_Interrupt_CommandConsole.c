@@ -17,6 +17,11 @@ static volatile uint8_t rx_storage[RX_BUFFER_SIZE];
 static RingBuffer_t usart_rx_buffer;
 static volatile uint32_t usart_error_events;
 
+static uint32_t IRQ_SaveAndDisable(void);
+static void IRQ_Restore(uint32_t primask);
+static void SendString(const char *text);
+static void SendHex32(uint32_t value);
+static void SendUSARTStatus(void);
 void ProcessCommand(uint8_t *cmd);
 
 // Initialize PB10 and PB11 as I2C2 alternate function pins.
@@ -162,10 +167,10 @@ int main(void)
 		 * would be silently overwritten. Disabling interrupts for the two
 		 * instructions that touch the shared variable closes the race window.
 		 */
-		__disable_irq();
+		uint32_t primask = IRQ_SaveAndDisable();
 		uint32_t errors = usart_error_events;
 		usart_error_events = USART_ERROR_NONE;
-		__enable_irq();
+		IRQ_Restore(primask);
 
 		if (errors != USART_ERROR_NONE)
 		{
@@ -295,11 +300,63 @@ void ProcessCommand(uint8_t *cmd)
 			USART_SendData(&USART1Handle, response, sizeof(response) - 1);
 		}
 	}
+	else if (strcmp((char *)cmd, "USART STATUS") == 0)
+	{
+		SendUSARTStatus();
+	}
 	else
 	{
 		uint8_t response[] = "ERR\r\n";
 		USART_SendData(&USART1Handle, response, sizeof(response) - 1);
 	}
+}
+
+static uint32_t IRQ_SaveAndDisable(void)
+{
+	uint32_t primask;
+
+	__asm volatile ("MRS %0, PRIMASK" : "=r" (primask) :: "memory");
+	__asm volatile ("CPSID i" ::: "memory");
+
+	return primask;
+}
+
+static void IRQ_Restore(uint32_t primask)
+{
+	__asm volatile ("MSR PRIMASK, %0" :: "r" (primask) : "memory");
+}
+
+static void SendString(const char *text)
+{
+	USART_SendData(&USART1Handle, (uint8_t *)text, strlen(text));
+}
+
+static void SendHex32(uint32_t value)
+{
+	static const char hex_digits[] = "0123456789ABCDEF";
+	uint8_t buffer[10];
+
+	buffer[0] = '0';
+	buffer[1] = 'x';
+
+	for (uint8_t i = 0; i < 8U; i++)
+	{
+		uint8_t shift = (uint8_t)(28U - (i * 4U));
+		buffer[2U + i] = (uint8_t)hex_digits[(value >> shift) & 0x0FU];
+	}
+
+	USART_SendData(&USART1Handle, buffer, sizeof(buffer));
+}
+
+static void SendUSARTStatus(void)
+{
+	SendString("ISR=");
+	SendHex32(USART1Handle.pUSARTx->ISR);
+	SendString(" BRR=");
+	SendHex32(USART1Handle.pUSARTx->BRR);
+	SendString(" ERR=");
+	SendHex32(USART_GetErrorCode(&USART1Handle));
+	SendString("\r\n");
 }
 
 void USART1_IRQHandler(void)

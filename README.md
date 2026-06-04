@@ -26,6 +26,7 @@ The project focuses on understanding how embedded drivers work underneath higher
 - `Inc/`: MCU register definitions and peripheral driver headers
 - `Src/`: peripheral driver implementations
 - `App/`: bare-metal demo applications used to validate each driver
+- `Docs/`: milestone notes and driver validation summaries
 - `tests/hil/`: Python hardware-in-the-loop tests using pytest and pyserial
 
 ## Example Applications
@@ -45,6 +46,7 @@ The project focuses on understanding how embedded drivers work underneath higher
 - `006SPI_TxOnly`
 - `007SPI_TxSTM32_RxEsp32`
 - `008SPIcmd_Handling`
+- `029SPI1_Arduino_LogicAnalyzer`
 
 ### I2C
 
@@ -65,6 +67,7 @@ The project focuses on understanding how embedded drivers work underneath higher
 - `025USART_RxInterrupt_RingBuffer`
 - `026USART_RxInterrupt_Callback`
 - `027USART_Interrupt_CommandConsole`
+- `028UART4_Arduino_LogicAnalyzer`
 
 ## Current Validation
 
@@ -76,6 +79,8 @@ Current validation includes:
 - GPIO input reading
 - external interrupt handling
 - SPI transmit examples
+- SPI data-size configuration through STM32L4 `CR2.DS`
+- SPI blocking transmit/receive with timeout-capable status APIs
 - I2C master transmit and receive
 - I2C sensor register reading
 - USART transmit and receive
@@ -83,6 +88,9 @@ Current validation includes:
 - USART RX interrupt handling with ring buffer
 - USART RX interrupt handling through driver callbacks
 - interrupt-driven USART command console using the reusable ring buffer
+- USART parity, framing, noise and overrun error detection
+- UART4 signal generation on Arduino D1 for logic analyzer validation
+- SPI1 signal generation on Arduino D13/D11/D10 for logic analyzer validation
 - Python hardware-in-the-loop tests over the ST-LINK Virtual COM Port
 
 ## USART Command Console
@@ -97,8 +105,11 @@ Example commands:
 - `LED OFF` -> `OK`
 - `BUTTON?` -> `PRESSED` or `RELEASED`
 - `I2C WHOAMI` -> `0xB1`
+- `USART STATUS` -> `ISR=0x... BRR=0x... ERR=0x...`
 
 The `I2C WHOAMI` command validates the onboard LPS22HB pressure sensor by reading its `WHO_AM_I` register through the custom I2C driver.
+
+The `USART STATUS` command reports selected USART diagnostic values from the running firmware.
 
 ## USART Interrupt Reception
 
@@ -139,6 +150,12 @@ The current HIL test suite validates:
 - `LED OFF`
 - `BUTTON?`
 - `I2C WHOAMI`
+- `USART STATUS`
+
+## Milestones
+
+- [USART driver milestone](Docs/USART_Milestone.md)
+- [SPI driver milestone](Docs/SPI_Milestone.md)
 
 ## Development Approach
 

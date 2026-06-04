@@ -499,6 +499,10 @@ typedef struct
 #define USART2_CCLK_HSI16()    do { RCC->CCIPR &= ~(3 << 2); RCC->CCIPR |= (2 << 2); } while(0)
 // USART3: bits 4 y 5 del CCIPR
 #define USART3_CCLK_HSI16()    do { RCC->CCIPR &= ~(3 << 4); RCC->CCIPR |= (2 << 4); } while(0)
+// UART4: bits 6 y 7 del CCIPR
+#define UART4_CCLK_HSI16()     do { RCC->CCIPR &= ~(3 << 6); RCC->CCIPR |= (2 << 6); } while(0)
+// UART5: bits 8 y 9 del CCIPR
+#define UART5_CCLK_HSI16()     do { RCC->CCIPR &= ~(3 << 8); RCC->CCIPR |= (2 << 8); } while(0)
 
 /* Macro para encender el oscilador HSI16 si estuviera apagado */
 #define HSI16_ENABLE()       do { RCC->CR |= (1 << 8); while(!(RCC->CR & (1 << 10))); } while(0)
@@ -739,10 +743,21 @@ typedef struct
 #define USART_CR3_UCESM				23
 #define USART_CR3_TCBGTIE			24
 
+#define USART_ISR_PE				0
+#define USART_ISR_FE				1
+#define USART_ISR_NE				2
+#define USART_ISR_ORE				3
+#define USART_ISR_IDLE				4
 #define USART_ISR_RXNE				5
 #define USART_ISR_TC				6
 #define USART_ISR_TXE				7
 #define USART_ISR_BUSY				16
+
+#define USART_ICR_PECF				0
+#define USART_ICR_FECF				1
+#define USART_ICR_NECF				2
+#define USART_ICR_ORECF				3
+#define USART_ICR_IDLECF			4
 
 
 

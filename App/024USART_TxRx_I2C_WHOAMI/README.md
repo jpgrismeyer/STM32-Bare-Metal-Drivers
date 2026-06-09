@@ -37,6 +37,12 @@ This demo verifies that the firmware can:
 - perform an I2C register write followed by an I2C register read
 - validate a real onboard sensor through its identity register
 
+## Demo
+
+The demo below shows the command console controlling hardware through USART commands.
+
+![USART I2C WHOAMI demo](usart-i2c-whoami-demo.gif)
+
 ## Supported Commands
 
 - PING -> PONG

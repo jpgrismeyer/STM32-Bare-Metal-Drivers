@@ -128,6 +128,8 @@ This keeps the interrupt handler short while allowing the application to process
 
 The project includes pytest-based hardware-in-the-loop tests that communicate with the board over the ST-LINK Virtual COM Port.
 
+![pytest HIL results](tests/hil/assets/hil_pytest_results.png)
+
 Install dependencies:
 
 ```powershell

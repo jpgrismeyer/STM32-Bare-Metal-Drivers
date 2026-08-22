@@ -34,6 +34,14 @@ typedef struct
 {
 	SPI_RegDef_t *pSPIx;		/*Holds the base address of SPIx (x: 0,1,2) peripheral*/
 	SPI_Config_t SPIConfig;
+
+	/* IT transfer state -- only touched by SPI_SendDataIT/SPI_ReceiveDataIT and the IRQ handler. */
+	uint8_t  *pTxBuffer;
+	uint8_t  *pRxBuffer;
+	uint32_t TxLen;
+	uint32_t RxLen;
+	uint8_t  TxState;
+	uint8_t  RxState;
 }SPI_Handle_t;
 
 /*
@@ -104,6 +112,20 @@ typedef struct
 #define SPI_ERROR           2
 
 #define SPI_TIMEOUT_COUNT   100000U
+
+/*
+ * @SPI_TxRxState -- IT transfer state (SPI_Handle_t.TxState / RxState)
+ */
+#define SPI_READY			0
+#define SPI_BUSY_IN_TX		1
+#define SPI_BUSY_IN_RX		2
+
+/*
+ * @SPI_ApplicationEvent -- codes passed to SPI_ApplicationEventCallback()
+ */
+#define SPI_EVENT_TX_CMPLT	1
+#define SPI_EVENT_RX_CMPLT	2
+#define SPI_EVENT_OVR_ERR	3
 /*Peripheral Clock setup
  *
  */
@@ -127,11 +149,29 @@ uint8_t SPI_ReceiveDataWithStatus(SPI_RegDef_t *pSPIx, uint8_t *pRxBuffer, uint3
 uint8_t SPI_GetFlagStatus(SPI_RegDef_t *pSPIx, uint32_t FlagName);
 
 /*
+ * Non-blocking (interrupt-driven) send/receive. Kick off the transfer and
+ * return immediately; SPI_IRQHandling() does the rest, byte by byte, from
+ * the ISR. Returns SPI_BUSY_IN_TX/SPI_BUSY_IN_RX if a transfer of that kind
+ * is already in flight (won't clobber it), SPI_OK otherwise.
+ */
+uint8_t SPI_SendDataIT(SPI_Handle_t *pSPIHandle, uint8_t *pTxBuffer, uint32_t Len);
+uint8_t SPI_ReceiveDataIT(SPI_Handle_t *pSPIHandle, uint8_t *pRxBuffer, uint32_t Len);
+void SPI_CloseTransmission(SPI_Handle_t *pSPIHandle);
+void SPI_CloseReception(SPI_Handle_t *pSPIHandle);
+void SPI_ClearOVRFlag(SPI_RegDef_t *pSPIx);
+
+/*
  *IRQ Configuration and ISR handling
  */
 void SPI_IRQInterruptConfig(uint8_t IRQNumber, uint8_t EnorDi);
 void SPI_IRQPriorityConfig(uint8_t IRQNumber, uint32_t IRQPriority);
 void SPI_IRQHandling(SPI_Handle_t *pHandle);
+
+/*
+ * Weak default so the driver links even before an application overrides it
+ * (same pattern as I2C_ApplicationEventCallBack / USART_ApplicationEventCallback).
+ */
+void SPI_ApplicationEventCallback(SPI_Handle_t *pSPIHandle, uint8_t AppEv);
 
 /*
 *	Other Peripheral Control APIs

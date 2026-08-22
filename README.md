@@ -20,6 +20,7 @@ The project focuses on understanding how embedded drivers work underneath higher
 - I2C
 - USART
 - RCC helper functions
+- SD card over SPI (device driver built on top of the SPI driver — init sequence done, block read/write in progress)
 
 ## Project Structure
 
@@ -47,6 +48,7 @@ The project focuses on understanding how embedded drivers work underneath higher
 - `007SPI_TxSTM32_RxEsp32`
 - `008SPIcmd_Handling`
 - `029SPI1_Arduino_LogicAnalyzer`
+- `032SPI_Interrupt_MasterTx` — interrupt-driven send (`SPI_SendDataIT`), no blocking waits anywhere in the transfer path. See [App/032SPI_Interrupt_MasterTx/README.md](App/032SPI_Interrupt_MasterTx/README.md).
 
 ### I2C
 
@@ -56,6 +58,7 @@ The project focuses on understanding how embedded drivers work underneath higher
 - `013I2C_MasterRx_Sensor`
 - `014I2C_MasterTxRx_OLED`
 - `015I2C_MasterRx_Debug`
+- `031I2C_Interrupt_MasterTxRx` — interrupt-driven register read (`I2C_MasterSendDataIT`/`ReceiveDataIT`), no blocking waits anywhere in the transfer path. See [App/031I2C_Interrupt_MasterTxRx/README.md](App/031I2C_Interrupt_MasterTxRx/README.md).
 
 ### USART
 
@@ -68,6 +71,10 @@ The project focuses on understanding how embedded drivers work underneath higher
 - `026USART_RxInterrupt_Callback`
 - `027USART_Interrupt_CommandConsole`
 - `028UART4_Arduino_LogicAnalyzer`
+
+### Environmental Monitor (I2C + USART integration)
+
+- `030Environmental_Monitor_USART` — USART command console driving two I2C sensors (LPS22HB pressure, HTS221 temperature/humidity), with raw register output, physical-unit conversion (hPa, degC, %RH) using the HTS221 factory two-point calibration, and a GPIO-driven fan actuator that reacts to a configurable humidity threshold (the sensing/actuation core of the **Plant Guardian** closing project — SD-card data logging over SPI is the remaining piece). See [App/030Environmental_Monitor_USART/README.md](App/030Environmental_Monitor_USART/README.md).
 
 ## Current Validation
 
@@ -92,6 +99,11 @@ Current validation includes:
 - UART4 signal generation on Arduino D1 for logic analyzer validation
 - SPI1 signal generation on Arduino D13/D11/D10 for logic analyzer validation
 - Python hardware-in-the-loop tests over the ST-LINK Virtual COM Port
+- LPS22HB pressure conversion to hPa (fixed sensitivity, no calibration needed) — implemented, validated on real hardware
+- HTS221 factory two-point calibration read and applied to temperature/humidity conversion — implemented, validated on real hardware
+- GPIO-driven fan actuator reacting to a configurable humidity threshold — implemented, pending hardware validation
+- SD-over-SPI initialization (CMD0/CMD8/CMD55+ACMD41/CMD58, SDSC/SDHC detection) — implemented, pending hardware validation
+- I2C interrupt-driven master transfers (I2C_MasterSendDataIT/ReceiveDataIT, event+error IRQ handling) — implemented, pending hardware validation
 
 ## USART Command Console
 

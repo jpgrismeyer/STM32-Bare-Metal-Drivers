@@ -17,3 +17,6 @@ __pycache__/
 
 # Local assistant/tool settings
 .claude/
+
+# Stray local tool logs
+gcm-diagnose.log

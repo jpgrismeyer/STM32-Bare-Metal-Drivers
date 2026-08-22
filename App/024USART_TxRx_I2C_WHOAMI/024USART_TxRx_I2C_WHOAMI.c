@@ -189,6 +189,11 @@ void ProcessCommand(uint8_t *cmd)
         uint8_t response[] = "OK\r\n";
         USART_SendData(&USART1Handle, response, sizeof(response) - 1);
     }
+    else if (strcmp((char *)cmd, "APP_ID?") == 0)
+    {
+        uint8_t response[] = "USART_CMD_CONSOLE_POLLING\r\n";
+        USART_SendData(&USART1Handle, response, sizeof(response) - 1);
+    }
     else if (strcmp((char *)cmd, "BUTTON?") == 0)
     {
         if (GPIO_ReadFromInputPin(GPIOC, GPIO_PIN_NO_13) == 0)

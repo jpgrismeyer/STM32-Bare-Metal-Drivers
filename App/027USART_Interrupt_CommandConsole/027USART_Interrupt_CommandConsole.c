@@ -304,6 +304,10 @@ void ProcessCommand(uint8_t *cmd)
 	{
 		SendUSARTStatus();
 	}
+	else if (strcmp((char *)cmd, "APP_ID?") == 0)
+	{
+		SendString("USART_INTERRUPT_COMMAND_CONSOLE\r\n");
+	}
 	else
 	{
 		uint8_t response[] = "ERR\r\n";

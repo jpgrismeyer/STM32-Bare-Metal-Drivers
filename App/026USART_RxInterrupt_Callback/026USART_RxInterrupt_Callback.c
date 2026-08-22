@@ -115,6 +115,11 @@ void ProcessCommand(uint8_t *cmd)
 		USART_SendData(&USART1Handle, &cmd[5], strlen((char *)&cmd[5]));
 		USART_SendData(&USART1Handle, (uint8_t *)"\r\n", 2);
 	}
+	else if (strcmp((char *)cmd, "APP_ID?") == 0)
+	{
+		uint8_t response[] = "USART_INTERRUPT_CALLBACK\r\n";
+		USART_SendData(&USART1Handle, response, sizeof(response) - 1);
+	}
 	else
 	{
 		uint8_t response[] = "ERR\r\n";
